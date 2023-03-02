@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js">
+    </script>
+
+    <script type="text/javascript">
+
+      function fun() {
+        let spreadsheetId="1peqZ_mflm9mLBVnsDzMsSDGLTq1mmpy4Qc0cpKVVUkc"
+        let range = "league_schedule";
+        let apiKey = "AIzaSyBvV43w6Zu3mpvKhTbn-Flh5jlc-7uzL5Y";
+        let url = "https://sheets.googleapis.com/v4/spreadsheets/1peqZ_mflm9mLBVnsDzMsSDGLTq1mmpy4Qc0cpKVVUkc/values/league_schedule?key=AIzaSyBvV43w6Zu3mpvKhTbn-Flh5jlc-7uzL5Y"
+        $.ajax({
+          type: "GET",
+          url: url,
+          cache: false,
+          data: "",
+          success: function(response) {
+            const converted = convert2DArrayToJson(response.values);
+            // todo -> create fliter
+            // console.log(converted)
+            // array.sort(function(a,b){
+            //   // Turn your strings into dates, and then subtract them
+            //   // to get a value that is either negative, positive, or zero.
+            //   return new Date(b.date) - new Date(a.date);
+            // });
+            const homeGames = converted.filter(v => v.homeGame === "HOME");
+            console.log("HOME GAMES", homeGames)
+            var gamesGroupedByDate = groupBy(homeGames,'date');
+            console.log("gamesGroupedByDate", gamesGroupedByDate);
+            // console.log("gamesGroupedByDate_2", gamesGroupedByDate_2);
+            
+            $('#testTbl').html(""); // clear out existing
+            for (var key in gamesGroupedByDate){
+              buildGameTable(gamesGroupedByDate[key]);
+            }
+          }
+        });
+      }
+
+      function groupBy(data, groupByAttribute){
+          var groupedBy = data.reduce(function (obj, item) {
+            obj[item[groupByAttribute]] = obj[item[groupByAttribute]] || [];
+            obj[item[groupByAttribute]].push(item);
+            return obj;
+        }, {});
+        return groupedBy;
+      }
+
+
+      function convert2DArrayToJson(json){
+        // vacate headers/keys
+        let data = json;
+        let keys = data.shift()
+        // create JSON objects from Array
+        let result = data.map(data =>
+            Object.assign({}, ...data.map((x, i) => ({ [keys[i]]: x })))
+        );
+        // console.log(result);
+        return result
+      }
+
+      function buildGameTable(gamesByDate){
+        // console.log("gamesByDate", gamesByDate)
+        //already grouped by date, now group by time then 
+        gamesByDate.sort(function (a, b) {
+          if(! a.time) // hererer
+          return new Date('1970/01/01 ' + a.time) - new Date('1970/01/01 ' + b.time);
+        });
+
+        // var gamesGroupedByTime = groupBy(gamesByDate,'time');
+
+        // gamesByDate.sort(function(a,b){
+        //   // Turn your strings into dates, and then subtract them
+        //   // to get a value that is either negative, positive, or zero.
+        //   return new Date(b.date) - new Date(a.date);
+        // });
+        
+        var gamesGroupedByDate = groupBy(gamesByDate,'time');
+        
+        
+        var groupByDate = $('<div/>'),
+          seperator = $('<div/>'),
+          table = $('<table/>'),
+          table_head = $('<thead/>'),
+          head_row = $('<tr/>'),
+          table_body = $('<tbody/>'),
+          body_row = [];
+
+        // head_row.append('<th>' + th + '</th>');
+        $.each(gamesByDate, function(index, game) {
+          body_row[index] = $('<tr/>');
+          body_row[index].append('<td>' + '</td>');
+          // body_row[index].append('<td>' + game.date + '</td>');
+          body_row[index].append('<td>' + game.time + '</td>');
+          body_row[index].append('<td>' + game.matchNum + '</td>');
+          body_row[index].append('<td>' + game.freeholdTeam + '</td>');
+          body_row[index].append('<td>' + game.year + '</td>');
+          body_row[index].append('<td>' + game.fieldNum + '</td>');
+        });
+          
+        // seperator
+        table_head.append(head_row);
+        table_body.append(body_row)
+        table.append(table_head);
+        table.append(table_body);
+        groupByDate.append('<div class="groupedByDate">' + gamesByDate[0].date + "<div/>");
+        groupByDate.append(table);
+        
+        $('#testTbl').append(groupByDate);
+      }
+
+    </script>
+    <style>
+      .groupedByDate   {background-color: powderblue;}
+    </style>
+    
+  </head>
+
+  <body>
+    <p> Click the following button to see the effect </p>
+    <form>
+      <input type="button" value="Click me" onclick="fun();" />
+      <br />
+      <div id="testTbl"></div>
+      <br />
+<!--       <label ID="lbl" name="lLlAssetName">HI</label> -->
+    </form>
+  </body>
+
+</html>
+
