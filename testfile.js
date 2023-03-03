@@ -1,4 +1,5 @@
-{
+function getTestRequest(){
+  return {
   "range": "league_schedule!A1:AY1001",
   "majorDimension": "ROWS",
   "values": [
@@ -1794,4 +1795,5 @@
       "7v7 A CSI Turf"
     ]
   ]
+}
 }
