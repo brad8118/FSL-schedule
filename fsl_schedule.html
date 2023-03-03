@@ -64,11 +64,12 @@
         // vacate headers/keys
         let data = json;
         let keys = data.shift()
+        console.log("Header keys:", keys)
         // create JSON objects from Array
         let result = data.map(data =>
             Object.assign({}, ...data.map((x, i) => ({ [keys[i]]: x })))
         );
-        // console.log(result);
+        console.log("convert2DArrayToJson", result);
         return result
       }
 
@@ -99,23 +100,50 @@
           delete gamesGroupedByTime[""];
           groupByDate.append('<div class="gamesNotScheduled"><b>Games Not Scheduled yet:</b> ' + notScheduledGames + "<div/>");          
         }
-        console.log("gamesGroupedByTime ", gamesGroupedByTime)        
-
-        // head_row.append('<th>' + th + '</th>');
-        // $.each(gamesByDate, function(index, gamesGroupedByTime) {
-        $.each(gamesGroupedByTime, function(time, grouped) {
-          console.log("grouped ", grouped)
+        console.log("gamesGroupedByTime ", gamesGroupedByTime);  
           
-          $.each(grouped, function(index, game) {
-            body_row[index] = $('<tr/>');
-            body_row[index].append('<td>' + '</td>');
-            // body_row[index].append('<td>' + game.date + '</td>');
-            body_row[index].append('<td>' + game.time + '</td>');
-            body_row[index].append('<td>' + game.matchNum + '</td>');
-            body_row[index].append('<td>' + game.freeholdTeam + '</td>');
-            body_row[index].append('<td>' + game.year + '</td>');
-            body_row[index].append('<td>' + game.fieldNum + '</td>');
-          });
+        // 9v9	9v9	9v9	9v9		7v7	7v7	7v7	7v7		11v11	11v11		7v7	7v7
+        // OP4A	OP4B	OP4C	OP4D		OP6A	OP6B	OP6C	OP6D		OP5	OP5		JM5	JM6
+        // var fields = ["OP4A","OP4B","OP4C","OP4D","OP6A","OP6B","OP6C","OP6D","OP5","OP5","JM5","JM6"];
+        // var fields = ["OP4","OP6B","OP6C","OP6D","OP5","OP5","JM5","JM6"];
+        var fields = ["JM1", "JM2", "JM3","JM4","JM5","JM6"];
+
+        head_row.append(`<th>Times</th>`); // vertial column
+        for (f of fields){
+          head_row.append(`<th>${f}</th>`);
+        }
+        
+        // $.each(gamesByDate, function(index, gamesGroupedByTime) {
+        var index = -1;
+        $.each(gamesGroupedByTime, function(time, grouped) {
+          // console.log("grouped ", grouped)
+          index++;
+          body_row[index] = $('<tr/>');
+          body_row[index].append('<td>' + grouped[0].time + '</td>');
+
+          for(field of fields){
+            const gameOnField = grouped.filter(v => v.fieldNum == field);
+            if (gameOnField.length > 0){
+              var gamesStr = "";
+              for(g of gameOnField){
+                gamesStr += g.freeholdTeam; 
+              }
+              body_row[index].append(`<td>${gamesStr}</td>`);
+            }else{
+              body_row[index].append('<td> - </td>');
+            }
+          }
+
+          // $.each(grouped, function(i, game) {
+          //   body_row[i] = $('<tr/>');
+          //   body_row[i].append('<td>' + '</td>');
+          //   body_row[i].append('<td>' + game.date + '</td>');
+          //   body_row[i].append('<td>' + game.time + '</td>');
+          //   body_row[i].append('<td>' + game.matchNum + '</td>');
+          //   body_row[i].append('<td>' + game.freeholdTeam + '</td>');
+          //   // body_row[i].append('<td>' + game.year + '</td>');
+          //   body_row[i].append('<td>' + game.fieldNum + '</td>');
+          // });
           
         });
           
@@ -133,15 +161,32 @@
 
     </script>
     <style>
-      .groupedByDate   {background-color: #00aedb;}
+      .groupedByDate   {
+        background-color: #9d9e9f;
+        font-size: larger;
+        font-weight: bold;
+        margin-top: 10px;
+        padding: 5px;
+      }
       .gamesNotScheduled   {background-color: #ffcc00;}
+      /* tr {padding-left: 15px;padding-right: 15px;} */
+      table {
+        border-collapse: collapse;
+        text-align: center;
+      }
+      th, td {
+        border: 1px solid black;
+        padding-left: 15px;padding-right: 15px;
+      }
+      th {font-size: large;}
+
     </style>
     
   </head>
 
   <body>
     <form>
-      <input type="button" value="Click me" onclick="fetchGamesFromSheet();" />
+      <input type="button" value="Refresh" onclick="fetchGamesFromSheet();" />
       <input type="button" value="Load From Test File" onclick="populateTableFromMockData();" />
       
       <br />
