@@ -22,7 +22,7 @@ function getTestRequest(){
     ],
     [
       "EDP",
-      "Sunday, March 26, 2023",
+      "Sunday, March 01, 2023",
       "1023",
       "10:30 AM",
       "HOME",
@@ -34,7 +34,7 @@ function getTestRequest(){
       "JM1",
       "Central",
       "",
-      "JM1",
+      "OP6",
     ],
     [
       "EDP",

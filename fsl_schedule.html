@@ -6,16 +6,22 @@
     </script>
 
     <script src="testfile.js" ></script>
+
+    <script type="text/javascript">
+      $(document).ready(function(){
+        if (typeof getTestRequest == 'undefined') {
+          $('#btnFetchFromMock').hide()
+          fetchGamesFromSheet();
+        }
+      });
+    </script>
+
     <script type="text/javascript">
      
       function populateTableFromMockData(){
         var response = getTestRequest();
         console.log(response);
         populateTableWithGames(response.values);
-
-        // $.getJSON( "testfile.json", function(response) {
-        //   populateTableWithGames(response.values);
-        // });
       }
       
       function fetchGamesFromSheet() {
@@ -37,7 +43,12 @@
       }
 
       function populateTableWithGames(games){
-        const converted = convert2DArrayToJson(games);
+        var converted = convert2DArrayToJson(games);
+        var ckbShowPastGames = $("#ckbShowPastGames");
+
+        if (!$('#ckbShowPastGames').is(":checked")){
+          converted = converted.filter(v => new Date(v.date).getTime() >= new Date().getTime());
+        }
         const homeGames = converted.filter(v => v.homeGame === "HOME");
         console.log("HOME GAMES", homeGames)
         var gamesGroupedByDate = groupBy(homeGames,'date');
@@ -108,6 +119,16 @@
         // var fields = ["OP4","OP6B","OP6C","OP6D","OP5","OP5","JM5","JM6"];
         var fields = ["JM1", "JM2", "JM3","JM4","JM5","JM6"];
 
+        // search for any fields not at JM (typically we only have games at JM)
+        var extraFields = [];
+        for (g of gamesByDate){
+          if(g.fieldNum && g.fieldNum != "" && !(fields.includes(g.fieldNum)) && !(extraFields.includes(g.fieldNum))){
+            extraFields.push(g.fieldNum);
+          }
+        }
+        if(extraFields.length > 0)
+          fields = fields.concat(extraFields.sort());
+
         head_row.append(`<th>Times</th>`); // vertial column
         for (f of fields){
           head_row.append(`<th>${f}</th>`);
@@ -133,18 +154,6 @@
               body_row[index].append('<td> - </td>');
             }
           }
-
-          // $.each(grouped, function(i, game) {
-          //   body_row[i] = $('<tr/>');
-          //   body_row[i].append('<td>' + '</td>');
-          //   body_row[i].append('<td>' + game.date + '</td>');
-          //   body_row[i].append('<td>' + game.time + '</td>');
-          //   body_row[i].append('<td>' + game.matchNum + '</td>');
-          //   body_row[i].append('<td>' + game.freeholdTeam + '</td>');
-          //   // body_row[i].append('<td>' + game.year + '</td>');
-          //   body_row[i].append('<td>' + game.fieldNum + '</td>');
-          // });
-          
         });
           
         // seperator
@@ -158,9 +167,26 @@
         $('#testTbl').append(groupByDate);
       }
         
+      function showOldGamesCkbChange(e){
+        const {checked} = e.target;
+
+        if (typeof getTestRequest == 'undefined') {
+          fetchGamesFromSheet();
+        }
+        else{
+          populateTableFromMockData()
+        }
+      }
 
     </script>
     <style>
+      .pageTitle {
+        text-align: center;
+      }
+      .pageControls{
+        text-align: center;
+      }
+
       .groupedByDate   {
         background-color: #9d9e9f;
         font-size: larger;
@@ -186,9 +212,17 @@
 
   <body>
     <form>
-      <input type="button" value="Refresh" onclick="fetchGamesFromSheet();" />
-      <input type="button" value="Load From Test File" onclick="populateTableFromMockData();" />
-      
+      <div class="pageTitle">
+        <h1>
+         Freehold Soccer Game Schedule
+        </h1>
+      </div>
+      <div class="pageControls">
+        <input id="btnFetchFromSheet" type="button" value="Refresh" onclick="fetchGamesFromSheet();" />
+        <input id="btnFetchFromMock" type="button" value="Load From Test File" onclick="populateTableFromMockData();" />
+        <input type="checkbox" id="ckbShowPastGames" onchange="showOldGamesCkbChange(event)"/>
+        <label for="ckbMessage">Show games in the past</label>
+      </div>
       <br />
       <br />
       <div id="testTbl"></div>
