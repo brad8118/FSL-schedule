@@ -5,18 +5,25 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js">
     </script>
 
-    <script src="testfile.js" ></script>
+    <script src="capelli_mock.js" ></script>
 
     <script type="text/javascript">
       $(document).ready(function(){
-        if (typeof getTestRequest == 'undefined') {
-          $('#btnFetchFromMock').hide()
-          fetchGamesFromSheet();
-        }
+        populateTable()
       });
     </script>
 
     <script type="text/javascript">
+
+      function populateTable(){
+        if (typeof getTestRequest == 'undefined') {
+          $('#btnFetchFromMock').hide()
+          fetchGamesFromSheet();
+        }
+        else{
+          populateTableFromMockData();
+        }
+      }
      
       function populateTableFromMockData(){
         var response = getTestRequest();
@@ -37,6 +44,35 @@
           data: "",
           success: function(response) {
             console.log(response)
+            populateTable();
+          }
+        });
+      }
+
+      function sendRequestToGoogleSheets(dropDownDisplay, teamName, date, practice_game, email){
+        let spreadsheetId="1FAIpQLScLOZl2sY_u0UbVVmojFnC4yHKMVSXM9272IgFSqxIuo99frQ";
+        let a_teamname = teamName; //'Wildfire';
+        let a_dropDownDisplay = dropDownDisplay.replaceAll("__", " :: ");"Capelli+::+2/27/2023+::+Field_6A+::+7:30-8:30";
+        let a_practice_game = practice_game ; //"Practice"
+        let a_contact = email; // "brad8118@gmail.com"
+        let a_1st_date = date; //"2023-03-27";
+        let a_1st_time = "Weekday+Early+Game+(@+5:45PM+%2B/-)";
+        let url = `
+            https://docs.google.com/forms/d/e/${spreadsheetId}/formResponse?usp=pp_url
+            &entry.1361341806=${a_teamname}
+            &entry.34932603=${a_dropDownDisplay}
+            &entry.854855789=${a_1st_date}
+            &entry.215078193=${a_1st_time}
+            &entry.1208106386=${a_practice_game}
+            &entry.1434428034=${a_contact}`
+
+        $.ajax({
+          type: "GET",
+          url: url,
+          cache: false,
+          data: "",
+          success: function(response) {
+            console.log(response)
             populateTableWithPractices(response.values);
           }
         });
@@ -49,7 +85,6 @@
         //   converted = converted.filter(v => new Date(v.date).getTime() >= new Date().getTime());
         // }
 
-        // const homeGames = converted.filter(v => v.homeGame === "HOME");
         // console.log("HOME GAMES", homeGames)
         var practicesGroupedByDate = groupBy(converted, 'date');
         console.log("practicesGroupedByDate", practicesGroupedByDate);
@@ -57,10 +92,6 @@
         
         $('#testTbl').html(""); // clear out existing
           buildPracticeTable(practicesGroupedByDate);
-
-        // for (var key in practicesGroupedByDate){
-        //   buildPracticeTable(practicesGroupedByDate[key]);
-        // }
       }
 
       function groupBy(data, groupByAttribute){
@@ -88,76 +119,41 @@
 
       function buildPracticeTable(practicesByDate){
         // console.log("practicesByDate", practicesByDate)
-        //already grouped by date, now group by time then 
-        // practicesByDate.sort(function (a, b) {
-        //   if(! a.time)
-        //     return new Date('1970/01/01 ' + a.time) - new Date('1970/01/01 ' + b.time);
-        // });
-
-        var groupByDate = $('<div/>'),
-          seperator = $('<div/>'),
-          table = $('<table/>'),
-          table_head = $('<thead/>'),
-          head_row = $('<tr/>'),
-          table_body = $('<tbody/>'),
-          body_row = [];
-
-        // groupByDate.append('<div class="groupedByDate">' + practicesByDate[0].date + "<div/>");
-        
-        // var gamesGroupedByTime = groupBy(practicesByDate, 'time');        
-        // if("" in gamesGroupedByTime){
-        //    var notScheduledGames = "";
-        //    gamesGroupedByTime[""].forEach( game => {
-        //        notScheduledGames += `<label>(#${game.matchNum}) ${game.freeholdTeam}, </label>`
-        //      });
-        //   delete gamesGroupedByTime[""];
-        //   groupByDate.append('<div class="gamesNotScheduled"><b>Games Not Scheduled yet:</b> ' + notScheduledGames + "<div/>");          
-        // }
-        // console.log("gamesGroupedByTime ", gamesGroupedByTime);  
-          
-        // 9v9	9v9	9v9	9v9		7v7	7v7	7v7	7v7		11v11	11v11		7v7	7v7
-        // OP4A	OP4B	OP4C	OP4D		OP6A	OP6B	OP6C	OP6D		OP5	OP5		JM5	JM6
-        // var fields = ["OP4A","OP4B","OP4C","OP4D","OP6A","OP6B","OP6C","OP6D","OP5","OP5","JM5","JM6"];
-        // var fields = ["OP4","OP6B","OP6C","OP6D","OP5","OP5","JM5","JM6"];
-        var fields = ["JM1", "JM2", "JM3","JM4","JM5","JM6"];
-
-        // search for any fields not at JM (typically we only have games at JM)
-        // var extraFields = [];
-        // for (g of practicesByDate){
-        //   if(g.fieldNum && g.fieldNum != "" && !(fields.includes(g.fieldNum)) && !(extraFields.includes(g.fieldNum))){
-        //     extraFields.push(g.fieldNum);
-        //   }
-        // }
-        // if(extraFields.length > 0)
-        //   fields = fields.concat(extraFields.sort());
-
-        // head_row.append(`<th>Times</th>`); // vertial column
-        // for (f of fields){
-        //   head_row.append(`<th>${f}</th>`);
-        // }
-
         var practicesTables = $('<div/>');
         for ([key, p] of Object.entries(practicesByDate)){
-            var byDateDiv = $(`<div class="dayWrapper"> </div>`)
-            byDateDiv.append(`<div class="dateHeader">${key}</div>`);
+            var byDateDiv = $(`<table class="dayWrapper"> </table>`)
+            byDateDiv.append(`<tr><td class="dateHeader" colspan="2">${key}</td></tr>`);
+           
             for (t of ['5:30-7:00', '7:00-8:30']){
                 byDateDiv.append(
-                    `<table>
-                        <tr><td class="practiceTimeHeader" colspan="2">${t}</td></tr>
-                        <tr>
-                            ${createTD(p.find(v => v.time == t && v.fieldNum == "Field_6A"), "6A")}
-                            ${createTD(p.find(v => v.time == t && v.fieldNum == "Field_6C"), "6C")}
-                        </tr>
-                        <tr>
-                            ${createTD(p.find(v => v.time == t && v.fieldNum == "Field_6B"), "6B")}
-                            ${createTD(p.find(v => v.time == t && v.fieldNum == "Field_6D"), "6D")}
-                        </tr>
-                    </table>`);
+                    ` <tr><td class="practiceTimeHeader" colspan="2">${t}</td></tr>
+                      <tr>
+                          ${createTD(p.find(v => v.time == t && v.fieldNum == "Field_6A"), "6A")}
+                          ${createTD(p.find(v => v.time == t && v.fieldNum == "Field_6C"), "6C")}
+                      </tr>
+                      <tr>
+                          ${createTD(p.find(v => v.time == t && v.fieldNum == "Field_6B"), "6B")}
+                          ${createTD(p.find(v => v.time == t && v.fieldNum == "Field_6D"), "6D")}
+                      </tr>`);
             }
             practicesTables.append(byDateDiv);
         }
         
         $('#testTbl').append(practicesTables);
+        
+        $(".UnReserved").click(function(){
+          $(this).toggleClass("selected");
+          populateSelectionLists()
+        });
+
+        $(".Booked").click(function(){
+          $(this).toggleClass("canceling");
+          populateSelectionLists()
+        });
+      }
+
+      function populateSelectionLists(){
+          $("#practicesToRequest")(""); // clear out existing
       }
 
       function createTD(practice, field){
@@ -171,13 +167,7 @@
         
       function showOldGamesCkbChange(e){
         const {checked} = e.target;
-
-        if (typeof getTestRequest == 'undefined') {
-          fetchGamesFromSheet();
-        }
-        else{
-          populateTableFromMockData()
-        }
+        populateTable();
       }
 
     </script>
@@ -219,6 +209,20 @@
       .tbl_td{
         min-width: 100px;
       }
+      .dayWrapper{
+        float:left;
+        position: relative;
+        margin-bottom: 10px;
+      }
+      .Booked{
+        background-color: darkseagreen;
+      }
+      .Requested{
+        background-color: goldenrod;
+      }
+      .selected{
+        background-color: rgb(255, 217, 0);
+      }
     </style>
     
   </head>
@@ -227,7 +231,7 @@
     <form>
       <div class="pageTitle">
         <h1>
-         Freehold Soccer Game Schedule
+         Capelli Schedule
         </h1>
       </div>
       <div class="pageControls">
@@ -237,7 +241,16 @@
         <label for="ckbMessage">Show games in the past</label>
       </div>
       <div id="messageDiv">
-        Hover over the game  to see game details
+        Hover over the game to see game details
+      </div>
+      <div>
+        <div><label>Team Name</label> <input id="tbxTeamName" type="text" /></div>
+        <div><label>Game or Pratice (notes)</label> <input id="tbxGamePractice" type="text" /></div>
+        <div><label>Email (seperated by commas)</label> <input id="email" type="text" /></div>
+      </div>
+      <div id="practicesToRequest">]
+      </div>
+      <div id="practicesToCancel">]
       </div>
       <br />
       <br />
