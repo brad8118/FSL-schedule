@@ -2,10 +2,11 @@
 <html>
 
   <head>
+    <!-- <meta name="referrer" content="No-referrer"> -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js">
     </script>
 
-    <script src="capelli_mock.js" ></script>
+    <script src="capelli_mock_2.js" ></script>
 
     <script type="text/javascript">
       $(document).ready(function(){
@@ -43,38 +44,159 @@
           cache: false,
           data: "",
           success: function(response) {
-            console.log(response)
-            populateTable();
+            // console.log(response)
+            populateTableWithPractices(response.values);
           }
         });
       }
 
-      function sendRequestToGoogleSheets(dropDownDisplay, teamName, date, practice_game, email){
+      window.googleDocCallback = function () { return true; };
+
+      function UserAction() {
+          var xhttp = new XMLHttpRequest();
+          xhttp.onreadystatechange = function() {
+              if (this.readyState == 4 && this.status == 200) {
+                  alert(this.responseText);
+              }
+          };
+          url = "https://docs.google.com/forms/d/e/1FAIpQLScLOZl2sY_u0UbVVmojFnC4yHKMVSXM9272IgFSqxIuo99frQ/formResponse?usp=pp_url&entry.1361341806=teamName&entry.34932603=Capelli+::+2/27/2023+::+Field_6B+::+5:30-7:00&entry.854855789=2023-03-08&entry.215078193=Weekday+Early+Game+(@+5:45PM+%2B/-)&entry.1208106386=NOTES+with+spaces&entry.1434428034=brad81182@gmail.com"
+          url += "&callback=googleDocCallback";
+          
+          xhttp.open("POST", url, true);
+          // xhttp.setRequestHeader("Access-Control-Allow-Origin", '*');
+          xhttp.send();
+      }
+
+      /**
+       * set request to spread sheet responses to request or cancel practice
+       **/
+      function sendRequestToGoogleSheets(dropDownDisplay, teamName, practice_game, email){
+
+        // Object.defineProperty(document, "referrer", {get : function(){ return "https://6319365"; }});
+
+        // return UserAction()
+
         let spreadsheetId="1FAIpQLScLOZl2sY_u0UbVVmojFnC4yHKMVSXM9272IgFSqxIuo99frQ";
-        let a_teamname = teamName; //'Wildfire';
-        let a_dropDownDisplay = dropDownDisplay.replaceAll("__", " :: ");"Capelli+::+2/27/2023+::+Field_6A+::+7:30-8:30";
-        let a_practice_game = practice_game ; //"Practice"
-        let a_contact = email; // "brad8118@gmail.com"
-        let a_1st_date = date; //"2023-03-27";
+        let a_teamname = teamName.trim().replaceAll(" ", "+"); //'Wildfire';
+        let a_dropDownDisplay = dropDownDisplay.trim().replaceAll("__", " :: ").replaceAll(" ", "+")//"Capelli+::+2/27/2023+::+Field_6A+::+7:30-8:30";
+        let a_practice_game = practice_game.trim().replaceAll(" ", "+"); //"Practice"
+        let a_contact = email.trim().replaceAll(" ", "+");; // "brad8118@gmail.com"
+        let a_1st_date = dropDownDisplay.trim().split("__")[1]; //Capelli__3/3/2023__Field_6C__7:00-8:30;
         let a_1st_time = "Weekday+Early+Game+(@+5:45PM+%2B/-)";
-        let url = `
-            https://docs.google.com/forms/d/e/${spreadsheetId}/formResponse?usp=pp_url
-            &entry.1361341806=${a_teamname}
-            &entry.34932603=${a_dropDownDisplay}
-            &entry.854855789=${a_1st_date}
-            &entry.215078193=${a_1st_time}
-            &entry.1208106386=${a_practice_game}
-            &entry.1434428034=${a_contact}`
+        // let url = `
+        //     https://docs.google.com/forms/d/e/${spreadsheetId}/formResponse?usp=pp_url
+        //     &entry.1361341806=${a_teamname}
+        //     &entry.34932603=${a_dropDownDisplay}
+        //     &entry.854855789=${a_1st_date}
+        //     &entry.215078193=${a_1st_time}
+        //     &entry.1208106386=${a_practice_game}
+        //     &entry.1434428034=${a_contact}`
+
+        let dataToPost = new FormData(); //formdata API
+        dataToPost.append("entry.294341084", a_teamname);
+        dataToPost.append("entry.34932603", a_dropDownDisplay);
+        dataToPost.append("entry.854855789", a_1st_date);
+        dataToPost.append("entry.215078193", a_1st_time);
+        dataToPost.append("entry.1208106386", a_practice_game);
+        dataToPost.append("entry.1434428034", a_contact);
+
+        fetch("https://docs.google.com/forms/d/e/1FAIpQLScLOZl2sY_u0UbVVmojFnC4yHKMVSXM9272IgFSqxIuo99frQ/formResponse",{
+        method: "POST",
+        mode: "no-cors",
+        header:{
+            'Content-Type': 'application/json'
+            },
+        body: dataToPost
+        })
+        .then(data=>{
+            console.log(data);
+            alert("Form Submitted");
+        })
+        .catch(err=>console.error(err)); //promise based
+
+
+        return
+        $('input[name="entry.1361341806"]').val(a_teamname);
+        $('input[name="entry.34932603"]').val(a_dropDownDisplay);
+        $('input[name="entry.854855789"]').val(a_1st_date);
+        $('input[name="entry.215078193"]').val(a_1st_time);
+        $('input[name="entry.1208106386"]').val(a_practice_game);
+        $('input[name="entry.1434428034"]').val(a_contact);
+
+        // $('#my-form').submit(function(e) {
+            //prevent the form from submiting so we can post to the google form
+          // e.preventDefault();
+          //AJAX request
+          $.ajax({
+            url: 'https://docs.google.com/forms/d/e/1FAIpQLScLOZl2sY_u0UbVVmojFnC4yHKMVSXM9272IgFSqxIuo99frQ/formResponse',     //The public Google Form url, but replace /view with /formResponse
+            data: $('#my-form').serialize(), //Nifty jquery function that gets all the input data 
+            type: 'OPTIONS', //tells ajax to post the data to the url
+            dataType: "json", //the standard data type for most ajax requests
+            statusCode: { //the status code from the POST request
+              0: function(data) { //0 is when Google gives a CORS error, don't worry it went through
+                //success
+                $('#form-success').text('hooray! 0');
+              }, 
+              200: function(data) {//200 is a success code. it went through!
+                //success
+                $('#form-success').text('hooray! 200');
+              },
+              403: function(data) {//403 is when something went wrong and the submission didn't go through
+                //error
+                alert('Oh no! something went wrong. we should check our code to make sure everything matches with Google');
+              }
+            }  
+          });
+        // });                     
+
+        return 
+
+        /////
+        //https://docs.google.com/forms/d/e/1FAIpQLScLOZl2sY_u0UbVVmojFnC4yHKMVSXM9272IgFSqxIuo99frQ/formResponse?usp=pp_url&entry.1361341806=brad_test&entry.34932603=Capelli+::+2/27/2023+::+Field_6A+::+7:00-8:30&entry.854855789=2023-03-10&entry.215078193=Weekday+Early+Game+(@+5:45PM+%2B/-)&entry.1208106386=tes+tes&entry.1434428034=brad
+
+        let url = `https://docs.google.com/forms/d/e/${spreadsheetId}/formResponse?usp=pp_url&entry.1361341806=${a_teamname}&entry.34932603=${a_dropDownDisplay}&entry.854855789=${a_1st_date}&entry.215078193=${a_1st_time}&entry.1208106386=${a_practice_game}&entry.1434428034=${a_contact}`
+        //https://docs.google.com/forms/d/e/1FAIpQLScLOZl2sY_u0UbVVmojFnC4yHKMVSXM9272IgFSqxIuo99frQ/formResponse?entry.1361341806=wildfire&entry.34932603=Capelli+::+2/27/2023+::+Field_6B+::+5:30-7:00&entry.854855789=2/27/2023&entry.215078193=Weekday+Early+Game+(@+5:45PM+%2B/-)&entry.1208106386=test&entry.1434428034=brad
+        //https://docs.google.com/forms/d/e/1FAIpQLScLOZl2sY_u0UbVVmojFnC4yHKMVSXM9272IgFSqxIuo99frQ/formResponse?usp=pp_url&entry.1361341806=teamName&entry.34932603=Capelli+::+2/27/2023+::+Field_6B+::+5:30-7:00&entry.854855789=2023-03-08&entry.215078193=Weekday+Early+Game+(@+5:45PM+%2B/-)&entry.1208106386=NOTES+with+spaces&entry.1434428034=brad8118@gmail.com
+        url = "https://docs.google.com/forms/d/e/1FAIpQLScLOZl2sY_u0UbVVmojFnC4yHKMVSXM9272IgFSqxIuo99frQ/formResponse?usp=pp_url&entry.1361341806=teamName&entry.34932603=Capelli+::+2/27/2023+::+Field_6B+::+5:30-7:00&entry.854855789=2023-03-08&entry.215078193=Weekday+Early+Game+(@+5:45PM+%2B/-)&entry.1208106386=NOTES+with+spaces&entry.1434428034=brad81182@gmail.com"
+        
+        // url += "&callback=googleDocCallback";
+        console.log("url", url)
 
         $.ajax({
           type: "GET",
           url: url,
-          cache: false,
-          data: "",
-          success: function(response) {
-            console.log(response)
-            populateTableWithPractices(response.values);
-          }
+          beforeSend: function(jqXHR, settings) {
+            // jqXHR.setRequestHeader('x-access-token', undefined); // the header to remove
+            // jqXHR.setRequestHeader("Access-Control-Allow-Origin", '*'); // the header to remove
+          },
+          // beforeSend: function(request) {
+          //   request.setRequestHeader("Access-Control-Allow-Origin", '*');
+          //   request.setRequestHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+          // },
+          // crossDomain: true,
+          // cache: false,
+          // data: "",
+          // dataType: 'jsonp',
+
+          statusCode: { //the status code from the POST request
+            0: function(data) { //0 is when Google gives a CORS error, don't worry it went through
+              //success
+              $('#form-success').text('hooray!');
+            }, 
+            200: function(data) {//200 is a success code. it went through!
+              //success
+              $('#form-success').text('hooray!');
+            },
+            403: function(data) {//403 is when something went wrong and the submission didn't go through
+              //error
+              alert('Oh no! something went wrong. we should check our code to make sure everything matches with Google');
+            }
+          },
+
+          // success: function(response) {
+          //   console.log(response)
+          //   populateTable();
+          // }
         });
       }
 
@@ -152,8 +274,32 @@
         });
       }
 
+      /**
+       * When table cell is click show which items are selected
+       **/
       function populateSelectionLists(){
-          $("#practicesToRequest")(""); // clear out existing
+          $("#practicesToRequest").html(""); // clear out existing
+          $("#practicesToCancel").html(""); // clear out existing
+          $('#btnSubmit').hide();
+          $('#lblErrorSumit').text("")
+
+          //add to requested
+          if ($(".selected").length){
+            $('#btnSubmit').show();
+            $("#practicesToRequest").append(`<tr><th class="selectedCellsDisplayed">Practices to request:</th><tr>`);                        
+            $(".selected").each(function(index) {
+              $("#practicesToRequest").append(`<tr><td>${$(this)[0].id}</tr></td>`);
+            });
+          }
+
+          //canceling existing requested
+          if ($(".canceling").length){
+            $('#btnSubmit').show();
+            $("#practicesToCancel").append(`<tr><th class="selectedCellsDisplayed">Canceling requested practice:</th><tr>`);                        
+            $(".canceling").each(function(index) {
+              $("#practicesToCancel").append(`<tr><td>${$(this)[0].id}</tr></td>`);
+            });
+          }
       }
 
       function createTD(practice, field){
@@ -170,6 +316,24 @@
         populateTable();
       }
 
+      // <div><label>Team Name</label> <input id="tbxTeamName" type="text" /></div>
+      //   <div><label>Game or Pratice (notes)</label> <input id="tbxGamePractice" type="text" /></div>
+      //   <div><label>Email (seperated by commas)</label> <input id="email" type="text" /></div>
+
+      /**
+       * 
+       **/
+      function submitSelectedPractices(){
+        let teamName = $('#tbxTeamName').val()
+        let gamePractice = $('#tbxGamePractice').val()
+        let email = $('#email').val()
+
+        $(".selected").each(function(index) {
+          $("#practicesToRequest").append(`<tr><td>${$(this)[0].id}</tr></td>`);
+          let dropDownDisplay = $(this)[0].id;          
+          sendRequestToGoogleSheets(dropDownDisplay, teamName, gamePractice, email);
+        });
+      }
     </script>
     <style>
       .pageTitle {
@@ -205,23 +369,67 @@
         border: 1px solid black;
         padding-left: 15px;padding-right: 15px;
       }
+
       th {font-size: large;}
+
       .tbl_td{
         min-width: 100px;
       }
+
       .dayWrapper{
         float:left;
         position: relative;
         margin-bottom: 10px;
       }
+
       .Booked{
         background-color: darkseagreen;
       }
+
       .Requested{
         background-color: goldenrod;
       }
+
       .selected{
         background-color: rgb(255, 217, 0);
+      }
+
+      #divInputs {
+        /* width: 100%; */
+        text-align: center;
+        /* border: solid 1px black; */
+        position: relative;
+        float: left;
+      }
+
+      #practicesToRequest, #practicesToCancel{
+        margin-right: 10px;
+        position: relative;
+        float: left;
+      }
+
+
+      #divInputs > div{
+        position: relative;
+        float: left;
+        padding-right: 20px;
+      }
+
+      #divInputs label{
+        font-weight: bolder;
+      }
+
+      #groupingOfSelectedCells{
+        position: relative;
+        float: left;
+        width: 100%;
+        padding:10px;
+      }
+
+      .selectedCellsDisplayed{
+        /* width: 100%; */
+        /* text-align: center; */
+        font-weight: bold;
       }
     </style>
     
@@ -238,19 +446,35 @@
         <input id="btnFetchFromSheet" type="button" value="Refresh" onclick="fetchGamesFromSheet();" />
         <input id="btnFetchFromMock" type="button" value="Load From Test File" onclick="populateTableFromMockData();" />
         <input type="checkbox" id="ckbShowPast" onchange="showOldGamesCkbChange(event)"/>
-        <label for="ckbMessage">Show games in the past</label>
+        <label for="ckbMessage">Show practices in the past</label>
       </div>
       <div id="messageDiv">
         Hover over the game to see game details
       </div>
-      <div>
+      <div id="divInputs">
         <div><label>Team Name</label> <input id="tbxTeamName" type="text" /></div>
         <div><label>Game or Pratice (notes)</label> <input id="tbxGamePractice" type="text" /></div>
         <div><label>Email (seperated by commas)</label> <input id="email" type="text" /></div>
       </div>
-      <div id="practicesToRequest">]
-      </div>
-      <div id="practicesToCancel">]
+      <id id="formDiv">
+        <form id="my-form">
+          <input name="entry.1361341806" type="text" required/> <!-- a_teamname -->
+          <input name="entry.34932603" type="text" required/> <!-- a_dropDownDisplay -->
+          <input name="entry.854855789" type="text" required/> <!-- a_1st_date -->
+          <input name="entry.215078193" type="text" required/> <!-- a_1st_time -->
+          <input name="entry.1208106386" type="text" required/> <!-- a_practice_game -->
+          <input name="entry.1434428034" type="text" required/> <!-- a_contact -->
+          <input type="submit" />
+        </form>
+        <div id="form-success">HI</div>
+      </id>
+      <div id="groupingOfSelectedCells">
+        <table id="practicesToRequest">
+        </table>
+        <table id="practicesToCancel">
+        </table>
+        <button id="btnSubmit" hidden="hidden" type="button" onclick="submitSelectedPractices()">Request / Cancel Practices</button>
+        <label id="lblErrorSumit"></label>
       </div>
       <br />
       <br />
@@ -258,6 +482,5 @@
       <br />
     </form>
   </body>
-
 </html>
 
