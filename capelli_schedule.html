@@ -56,13 +56,17 @@
           var xhttp = new XMLHttpRequest();
           xhttp.onreadystatechange = function() {
               if (this.readyState == 4 && this.status == 200) {
-                  alert(this.responseText);
+                console.log(this.responseText)
+                alert(this.responseText);
               }
           };
-          url = "https://docs.google.com/forms/d/e/1FAIpQLScLOZl2sY_u0UbVVmojFnC4yHKMVSXM9272IgFSqxIuo99frQ/formResponse?usp=pp_url&entry.1361341806=teamName&entry.34932603=Capelli+::+2/27/2023+::+Field_6B+::+5:30-7:00&entry.854855789=2023-03-08&entry.215078193=Weekday+Early+Game+(@+5:45PM+%2B/-)&entry.1208106386=NOTES+with+spaces&entry.1434428034=brad81182@gmail.com"
-          url += "&callback=googleDocCallback";
+          // url = "https://docs.google.com/forms/d/e/1FAIpQLScLOZl2sY_u0UbVVmojFnC4yHKMVSXM9272IgFSqxIuo99frQ/formResponse?usp=pp_url&entry.1361341806=teamName&entry.34932603=Capelli+::+2/27/2023+::+Field_6B+::+5:30-7:00&entry.854855789=2023-03-08&entry.215078193=Weekday+Early+Game+(@+5:45PM+%2B/-)&entry.1208106386=NOTES+with+spaces&entry.1434428034=brad81182@gmail.com"
+          // url += "&callback=googleDocCallback";
+
+          url = "https://reverse-cors.herokuapp.com/https://docs.google.com/forms/d/e/1FAIpQLScLOZl2sY_u0UbVVmojFnC4yHKMVSXM9272IgFSqxIuo99frQ/formResponse?usp=pp_url&entry.1361341806=brad-test-cors&entry.34932603=Capelli+::+2/27/2023+::+Field_6A+::+7:00-8:30&entry.854855789=2023-03-15&entry.215078193=Weekday+Early+Game+(@+5:45PM+%2B/-)&entry.280905652=2023-03-15&entry.1208106386=please+work&entry.1434428034=brad8118@gmail.com";
           
-          xhttp.open("POST", url, true);
+          
+          xhttp.open("GET", url, true);
           // xhttp.setRequestHeader("Access-Control-Allow-Origin", '*');
           xhttp.send();
       }
@@ -74,7 +78,7 @@
 
         // Object.defineProperty(document, "referrer", {get : function(){ return "https://6319365"; }});
 
-        // return UserAction()
+        return UserAction()
 
         let spreadsheetId="1FAIpQLScLOZl2sY_u0UbVVmojFnC4yHKMVSXM9272IgFSqxIuo99frQ";
         let a_teamname = teamName.trim().replaceAll(" ", "+"); //'Wildfire';
@@ -116,6 +120,8 @@
 
 
         return
+
+
         $('input[name="entry.1361341806"]').val(a_teamname);
         $('input[name="entry.34932603"]').val(a_dropDownDisplay);
         $('input[name="entry.854855789"]').val(a_1st_date);
@@ -130,7 +136,7 @@
           $.ajax({
             url: 'https://docs.google.com/forms/d/e/1FAIpQLScLOZl2sY_u0UbVVmojFnC4yHKMVSXM9272IgFSqxIuo99frQ/formResponse',     //The public Google Form url, but replace /view with /formResponse
             data: $('#my-form').serialize(), //Nifty jquery function that gets all the input data 
-            type: 'OPTIONS', //tells ajax to post the data to the url
+            type: 'POST', //tells ajax to post the data to the url
             dataType: "json", //the standard data type for most ajax requests
             statusCode: { //the status code from the POST request
               0: function(data) { //0 is when Google gives a CORS error, don't worry it went through
@@ -160,6 +166,8 @@
         url = "https://docs.google.com/forms/d/e/1FAIpQLScLOZl2sY_u0UbVVmojFnC4yHKMVSXM9272IgFSqxIuo99frQ/formResponse?usp=pp_url&entry.1361341806=teamName&entry.34932603=Capelli+::+2/27/2023+::+Field_6B+::+5:30-7:00&entry.854855789=2023-03-08&entry.215078193=Weekday+Early+Game+(@+5:45PM+%2B/-)&entry.1208106386=NOTES+with+spaces&entry.1434428034=brad81182@gmail.com"
         
         // url += "&callback=googleDocCallback";
+
+        url = "https://reverse-cors.herokuapp.com/https://docs.google.com/forms/d/e/1FAIpQLScLOZl2sY_u0UbVVmojFnC4yHKMVSXM9272IgFSqxIuo99frQ/viewform?usp=pp_url&entry.1361341806=brad-test-cors&entry.34932603=Capelli+::+2/27/2023+::+Field_6A+::+7:00-8:30&entry.854855789=2023-03-15&entry.215078193=Weekday+Early+Game+(@+5:45PM+%2B/-)&entry.280905652=2023-03-15&entry.1208106386=please+work&entry.1434428034=brad8118@gmail.com";
         console.log("url", url)
 
         $.ajax({
