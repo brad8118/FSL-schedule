@@ -5,7 +5,7 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js">
     </script>
 
-    <script src="test_weekly_schedule.js" ></script>
+    <script src="mock_weekly_practice_schedule.js" ></script>
 
     <script type="text/javascript">
       $(document).ready(function(){
@@ -80,7 +80,7 @@
         row = $('<tr></tr>');
         //foreach dict of Day (Monday -> Thursday)
         for([day, practices] of Object.entries(groupedByDate)){
-            row = $(`<tr><td colspan="${TIME_FIELD_NAMES.length}">${day}</td></tr>`); // 
+            row = $(`<tr class="groupedByDate"><td colspan="${TIME_FIELD_NAMES.length}">${day}</td></tr>`); // 
             table.append(row);
 
             //generally should only be 2 practice times per night, 5:30->7 & 7->830
