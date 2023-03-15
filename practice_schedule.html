@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js">
+    </script>
+
+    <script src="test_weekly_schedule.js" ></script>
+
+    <script type="text/javascript">
+      $(document).ready(function(){
+        if (typeof getTestRequest == 'undefined') { // looks for function in the test file loaded above 
+          $('#btnFetchFromMock').hide()
+          fetchPracticesFromSheet();
+        }
+        else{
+            populateTableFromMockData()
+        }
+      });
+    </script>
+
+    <script type="text/javascript">
+     
+      const TIME_FIELD_NAMES = ['Time', 'OP4A', 'OP4B', 'OP4C', 'OP4D', 'OP6A', 'OP6B', 'OP6C', 'OP6D', 'OP5', 'OP5', 'OP3A', 'OP3B'];
+
+      function populateTableFromMockData(){
+        var response = getTestRequest();
+        console.log(response);
+        createTables(response.values);
+      }
+      
+      function fetchPracticesFromSheet() {
+        let spreadsheetId="1peqZ_mflm9mLBVnsDzMsSDGLTq1mmpy4Qc0cpKVVUkc"
+        let range = "practice_schedule";
+        let apiKey = "AIzaSyBvV43w6Zu3mpvKhTbn-Flh5jlc-7uzL5Y";
+        let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
+        
+        $.ajax({
+          type: "GET",
+          url: url,
+          cache: false,
+          data: "",
+          success: function(response) {
+            console.log(response)
+            createTables(response.values);
+          }
+        });
+      }
+
+      function createTables(games){
+
+        var groupedByDate = convertSpreadsheetToPracticeTime(games);
+        var ckbShowPastGames = $("#ckbShowPastGames");
+
+        // if (!$('#ckbShowPastGames').is(":checked")){
+        //   converted = converted.filter(v => new Date(v.date).getTime() >= new Date().getTime());
+        // }
+
+        // const homeGames = converted.filter(v => v.homeGame === "HOME");
+        // console.log("HOME GAMES", homeGames)
+        // var gamesGroupedByDate = groupBy(homeGames,'date');
+        // console.log("gamesGroupedByDate", gamesGroupedByDate);
+        // console.log("gamesGroupedByDate_2", gamesGroupedByDate_2);
+        
+        $('#testTbl').html(""); // clear out existing
+        createHtmlTable(groupedByDate);
+      }
+
+      function createHtmlTable(groupedByDate){
+        var table = $('<table></table>').addClass('foo');
+
+        row = $('<tr></tr>');
+        // order the table by field names
+        for(field of TIME_FIELD_NAMES){
+            var td = $(`<th>${field}</th>`)
+            row.append(td);
+        }
+        table.append(row);
+
+        row = $('<tr></tr>');
+        //foreach dict of Day (Monday -> Thursday)
+        for([day, practices] of Object.entries(groupedByDate)){
+            row = $(`<tr><td colspan="${TIME_FIELD_NAMES.length}">${day}</td></tr>`); // 
+            table.append(row);
+
+            //generally should only be 2 practice times per night, 5:30->7 & 7->830
+            for(practice of practices){
+                row = $('<tr></tr>');
+
+                // order the table by field names
+                for(field of TIME_FIELD_NAMES){
+                    var td = $(`<td>${practice[field]}</td>`)
+                    row.append(td);
+                }
+                table.append(row);
+            }
+        }
+
+        $('#testTbl').append(table);        
+      }
+
+      function groupBy(data, groupByAttribute){
+          var groupedBy = data.reduce(function (obj, item) {
+            obj[item[groupByAttribute]] = obj[item[groupByAttribute]] || [];
+            obj[item[groupByAttribute]].push(item);
+            return obj;
+        }, {});
+        return groupedBy;
+      }
+
+
+        // Time	OP4A	OP4B	OP4C	OP4D	OP6A	OP6B	OP6C	OP6D	OP5	OP5	OP3A	OP3B
+        // Mon	7v7	7v7	7v7	7v7	9v9	9v9	9v9	9v9	11v11	11v11	7v7	7v7
+        // 5:30-7:00pm	Flames	Wildcats	Heat		Falcons	Scorpions	Crush	Dragons	Breakers		Red Bulls	
+        // 7:05-8:35pm	Arsenal	Blues	 Rockets		Freedom	Strikers	Cobras	Union	Storm	Force		Liberty
+                                                        
+        // Tues												
+        // 5:30-7:00pm	Avengers	Mavericks	Dash	Galaxy	Thunder	Reign	Goalie	Flash	Phoenix	Jaguars		
+        // 7:05-8:35pm	Chaos	Wildfire	Blaze	Riptide	Fusion	Lightning	Goalie	Warriors	Phantoms	Rebels		
+                                                        
+        // Wed												
+        // 5:30-7:00pm	Arsenal	Blues	Rockets	Goalie	Freedom	Strikers	Cobras	Union		Red Bulls	Heat	Liberty
+        // 7:05-8:35pm	Flames	Wildcats	Wildfire	Goalie	Falcons	Scorpions	Crush	Dragons	Breakers	Storm	Force	
+                                                        
+        // Thurs												
+        // 5:30-7:00pm	Chaos	Dash	Mavericks	Riptide	Fusion	Lightning			Phantoms	Rebels		
+        // 7:05-8:35pm	Avengers		Blaze	Galaxy	Thunder	Reign	Warriors	Flash	Phoenix	Jaguars		
+
+      function convertSpreadsheetToPracticeTime(data){
+        data = data.splice(2,14) //remove the 1st 2 rows and everything after the last 
+        data.splice(10,2)  // blank above thurs & remove thursr
+        data.splice(6,2)  // blank above thurs & remove thurs
+        data.splice(2,2)  // blank above tues & remove tues
+        
+        //trim each row, anthing after 12 is gone
+        for(r of data){
+            r.splice(TIME_FIELD_NAMES.length);
+        }
+
+        let result = data.map(data =>
+            Object.assign({}, ...data.map((x, i) => ({ [TIME_FIELD_NAMES[i]]: x })))
+        );
+        console.log("convertSpreadsheetToPracticeTime", result);
+
+        var groupedByDay = {
+            "Monday":[result.shift(), result.shift()],
+            "Tuesday":[result.shift(), result.shift()],
+            "Wednesday":[result.shift(), result.shift()],
+            "Thrusday":[result.shift(), result.shift()]
+        }
+
+        return groupedByDay
+      }
+
+      function buildGameTable(gamesByDate){
+        // console.log("gamesByDate", gamesByDate)
+        //already grouped by date, now group by time then 
+        gamesByDate.sort(function (a, b) {
+          if(! a.time)
+            return new Date('1970/01/01 ' + a.time) - new Date('1970/01/01 ' + b.time);
+        });
+
+        var groupByDate = $('<div/>'),
+          seperator = $('<div/>'),
+          table = $('<table/>'),
+          table_head = $('<thead/>'),
+          head_row = $('<tr/>'),
+          table_body = $('<tbody/>'),
+          body_row = [];
+
+        groupByDate.append('<div class="groupedByDate">' + gamesByDate[0].date + "<div/>");
+        
+        var gamesGroupedByTime = groupBy(gamesByDate, 'time');        
+        if("" in gamesGroupedByTime){
+           var notScheduledGames = "";
+           gamesGroupedByTime[""].forEach( game => {
+               notScheduledGames += `<label>(#${game.matchNum}) ${game.freeholdTeam}, </label>`
+             });
+          delete gamesGroupedByTime[""];
+          groupByDate.append('<div class="gamesNotScheduled"><b>Games Not Scheduled yet:</b> ' + notScheduledGames + "<div/>");          
+        }
+        console.log("gamesGroupedByTime ", gamesGroupedByTime);  
+          
+        // 9v9	9v9	9v9	9v9		7v7	7v7	7v7	7v7		11v11	11v11		7v7	7v7
+        // OP4A	OP4B	OP4C	OP4D		OP6A	OP6B	OP6C	OP6D		OP5	OP5		JM5	JM6
+        // var fields = ["OP4A","OP4B","OP4C","OP4D","OP6A","OP6B","OP6C","OP6D","OP5","OP5","JM5","JM6"];
+        // var fields = ["OP4","OP6B","OP6C","OP6D","OP5","OP5","JM5","JM6"];
+        var fields = ["JM1", "JM2", "JM3","JM4","JM5","JM6"];
+
+        // search for any fields not at JM (typically we only have games at JM)
+        var extraFields = [];
+        for (g of gamesByDate){
+          if(g.fieldNum && g.fieldNum != "" && !(fields.includes(g.fieldNum)) && !(extraFields.includes(g.fieldNum))){
+            extraFields.push(g.fieldNum);
+          }
+        }
+        if(extraFields.length > 0)
+          fields = fields.concat(extraFields.sort());
+
+        head_row.append(`<th>Times</th>`); // vertial column
+        for (f of fields){
+          head_row.append(`<th>${f}</th>`);
+        }
+        
+        // $.each(gamesByDate, function(index, gamesGroupedByTime) {
+        var index = -1;
+        $.each(gamesGroupedByTime, function(time, grouped) {
+          // console.log("grouped ", grouped)
+          index++;
+          body_row[index] = $('<tr/>');
+          body_row[index].append('<td>' + grouped[0].time + '</td>');
+
+          for(field of fields){
+            const gameOnField = grouped.filter(v => v.fieldNum == field);
+            if (gameOnField.length > 0){
+              var gamesStr = "";
+              for(g of gameOnField){
+                gamesStr += g.freeholdTeam; 
+              }
+              body_row[index].append(`<td title="vs ${g.opponent} Game# (${g.matchNum})  League (${g.leagueType})">${gamesStr}</td>`);
+            }else{
+              body_row[index].append('<td> - </td>');
+            }
+          }
+        });
+          
+        // seperator
+        table_head.append(head_row);
+        table_body.append(body_row)
+        table.append(table_head);
+        table.append(table_body);
+
+        groupByDate.append(table);
+        
+        $('#testTbl').append(groupByDate);
+      }
+        
+      function showOldGamesCkbChange(e){
+        const {checked} = e.target;
+
+        if (typeof getTestRequest == 'undefined') {
+          fetchPracticesFromSheet();
+        }
+        else{
+          populateTableFromMockData()
+        }
+      }
+
+    </script>
+    <style>
+      .pageTitle {
+        text-align: center;
+      }
+      .pageControls{
+        text-align: center;
+      }
+      
+      #messageDiv{
+        text-align: center;
+      }
+
+      .groupedByDate   {
+        background-color: #9d9e9f;
+        font-size: larger;
+        font-weight: bold;
+        margin-top: 10px;
+        padding: 5px;
+      }
+      .gamesNotScheduled   {background-color: #ffcc00;}
+      /* tr {padding-left: 15px;padding-right: 15px;} */
+      table {
+        border-collapse: collapse;
+        text-align: center;
+      }
+      th, td {
+        border: 1px solid black;
+        padding-left: 15px;padding-right: 15px;
+      }
+      th {font-size: large;}
+
+    </style>
+    
+  </head>
+
+  <body>
+    <form>
+      <div class="pageTitle">
+        <h1>
+         Freehold Practice Schedule
+        </h1>
+      </div>
+      <div class="pageControls">
+        <input id="btnFetchFromSheet" type="button" value="Refresh" onclick="fetchPracticesFromSheet();" />
+        <input id="btnFetchFromMock" type="button" value="Load From Test File" onclick="populateTableFromMockData();" />
+        <input type="checkbox" id="ckbShowPastGames" onchange="showOldGamesCkbChange(event)"/>
+        <label for="ckbMessage">Show games in the past</label>
+      </div>
+      <div id="messageDiv">
+        Hover over the game  to see game details
+      </div>
+      <br />
+      <br />
+      <div id="testTbl"></div>
+      <br />
+    </form>
+  </body>
+
+</html>
+
