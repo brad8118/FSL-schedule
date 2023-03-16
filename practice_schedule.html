@@ -21,7 +21,7 @@
 
     <script type="text/javascript">
      
-      const TIME_FIELD_NAMES = ['Time', 'OP4A', 'OP4B', 'OP4C', 'OP4D', 'OP6A', 'OP6B', 'OP6C', 'OP6D', 'OP5', 'OP5', 'OP3A', 'OP3B'];
+      const TIME_FIELD_NAMES = ['Time', 'OP4A', 'OP4B', 'OP4C', 'OP4D', 'OP6A', 'OP6B', 'OP6C', 'OP6D', 'OP5A', 'OP5B', 'OP3A', 'OP3B'];
 
       function populateTableFromMockData(){
         var response = getTestRequest();
@@ -268,6 +268,11 @@
       }
       .gamesNotScheduled   {background-color: #ffcc00;}
       /* tr {padding-left: 15px;padding-right: 15px;} */
+
+      #testTbl table{
+        margin: 0 auto;
+      }
+
       table {
         border-collapse: collapse;
         text-align: center;
@@ -289,15 +294,15 @@
          Freehold Practice Schedule
         </h1>
       </div>
-      <div class="pageControls">
+      <div class="pageControls" style="display: none;">
         <input id="btnFetchFromSheet" type="button" value="Refresh" onclick="fetchPracticesFromSheet();" />
         <input id="btnFetchFromMock" type="button" value="Load From Test File" onclick="populateTableFromMockData();" />
         <input type="checkbox" id="ckbShowPastGames" onchange="showOldGamesCkbChange(event)"/>
         <label for="ckbMessage">Show games in the past</label>
       </div>
-      <div id="messageDiv">
+      <!-- <div id="messageDiv">
         Hover over the game  to see game details
-      </div>
+      </div> -->
       <br />
       <br />
       <div id="testTbl"></div>
