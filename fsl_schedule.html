@@ -49,8 +49,11 @@
         if (!$('#ckbShowPastGames').is(":checked")){
           converted = converted.filter(v => new Date(v.date).getTime() >= new Date().getTime());
         }
+
         const homeGames = converted.filter(v => v.homeGame === "HOME");
+        homeGames.sort((a, b) => (new Date(a.date) - new Date(b.date) ))
         console.log("HOME GAMES", homeGames)
+
         var gamesGroupedByDate = groupBy(homeGames,'date');
         console.log("gamesGroupedByDate", gamesGroupedByDate);
         // console.log("gamesGroupedByDate_2", gamesGroupedByDate_2);
@@ -86,10 +89,9 @@
 
       function buildGameTable(gamesByDate){
         // console.log("gamesByDate", gamesByDate)
-        //already grouped by date, now group by time then 
-        gamesByDate.sort(function (a, b) {
-          if(! a.time)
-            return new Date('1970/01/01 ' + a.time) - new Date('1970/01/01 ' + b.time);
+        //already grouped by date, now order by time  
+        gamesByDate.sort(function (a, b) {  
+          return new Date('1970/01/01 ' + a.time).getTime() - new Date('1970/01/01 ' + b.time).getTime();
         });
 
         var groupByDate = $('<div/>'),
@@ -111,7 +113,7 @@
           delete gamesGroupedByTime[""];
           groupByDate.append('<div class="gamesNotScheduled"><b>Games Not Scheduled yet:</b> ' + notScheduledGames + "<div/>");          
         }
-        console.log("gamesGroupedByTime ", gamesGroupedByTime);  
+        // console.log("gamesGroupedByTime ", gamesGroupedByTime);  
           
         // 9v9	9v9	9v9	9v9		7v7	7v7	7v7	7v7		11v11	11v11		7v7	7v7
         // OP4A	OP4B	OP4C	OP4D		OP6A	OP6B	OP6C	OP6D		OP5	OP5		JM5	JM6
@@ -236,6 +238,6 @@
       <br />
     </form>
   </body>
-
+<!-- HOME FIELDS -->
 </html>
 
