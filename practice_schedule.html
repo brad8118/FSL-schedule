@@ -6,15 +6,20 @@
     </script>
 
     <script src="mock_weekly_practice_schedule.js" ></script>
+    <!-- <script src="mock_league_schedule.js" ></script> -->
+    <script src="mock_league_schedule_few.js" ></script>
 
     <script type="text/javascript">
+      //fetch data from the spreadsheet or load from mock file
       $(document).ready(function(){
-        if (typeof getTestRequest == 'undefined') { // looks for function in the test file loaded above 
-          $('#btnFetchFromMock').hide()
-          fetchPracticesFromSheet();
+        if (typeof getTestRequest_PracticeSchedule == 'undefined' ||
+            typeof getTestRequest == 'undefined') { // looks for function in the test file loaded above 
+          $('.pageControls').hide()
+          fetchDataFromSheet();
         }
         else{
-            populateTableFromMockData()
+          $('.pageControls').show()
+          populateTableFromMockData()
         }
       });
     </script>
@@ -24,50 +29,180 @@
       const TIME_FIELD_NAMES = ['Time', 'OP4A', 'OP4B', 'OP4C', 'OP4D', 'OP6A', 'OP6B', 'OP6C', 'OP6D', 'OP5A', 'OP5B', 'OP3A', 'OP3B'];
 
       function populateTableFromMockData(){
-        var response = getTestRequest();
-        console.log(response);
-        createTables(response.values);
+        var games = getTestRequest();
+        var practices = getTestRequest_PracticeSchedule();
+
+        console.log("USING MOCK DATA");
+        createTables(practices.values, games.values);
+      }
+
+      function fetchDataFromSheet(){
+        $.when(GetAjax_PracticesFromSheet(), getAjax_GamesFromSheet()).done(function(practices, games){         
+          createTables(practices[0].values, games[0].values);
+        });   
       }
       
-      function fetchPracticesFromSheet() {
+      function GetAjax_PracticesFromSheet() {
         let spreadsheetId="1peqZ_mflm9mLBVnsDzMsSDGLTq1mmpy4Qc0cpKVVUkc"
         let range = "practice_schedule";
         let apiKey = "AIzaSyBvV43w6Zu3mpvKhTbn-Flh5jlc-7uzL5Y";
         let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
         
-        $.ajax({
+        return $.ajax({
           type: "GET",
           url: url,
           cache: false,
           data: "",
           success: function(response) {
             console.log(response)
-            createTables(response.values);
+            // createTables(response.values);
           }
         });
       }
 
-      function createTables(games){
-
-        var groupedByDate = convertSpreadsheetToPracticeTime(games);
-        var ckbShowPastGames = $("#ckbShowPastGames");
-
-        // if (!$('#ckbShowPastGames').is(":checked")){
-        //   converted = converted.filter(v => new Date(v.date).getTime() >= new Date().getTime());
-        // }
-
-        // const homeGames = converted.filter(v => v.homeGame === "HOME");
-        // console.log("HOME GAMES", homeGames)
-        // var gamesGroupedByDate = groupBy(homeGames,'date');
-        // console.log("gamesGroupedByDate", gamesGroupedByDate);
-        // console.log("gamesGroupedByDate_2", gamesGroupedByDate_2);
+      function getAjax_GamesFromSheet() {
+        let spreadsheetId="1peqZ_mflm9mLBVnsDzMsSDGLTq1mmpy4Qc0cpKVVUkc"
+        let range = "league_schedule";
+        let apiKey = "AIzaSyBvV43w6Zu3mpvKhTbn-Flh5jlc-7uzL5Y";
+        let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
         
-        $('#testTbl').html(""); // clear out existing
-        createHtmlTable(groupedByDate);
+        return $.ajax({
+          type: "GET",
+          url: url,
+          cache: false,
+          data: "",
+          success: function(response) {
+            console.log(response)
+          }
+        });
       }
 
-      function createHtmlTable(groupedByDate){
-        var table = $('<table></table>').addClass('foo');
+      function createTables(practice_response, games_response){
+        var practicesGroupedByDate = convertSpreadsheetToPracticeTime(practice_response);
+        var games = convert2DArrayToJson(games_response);
+        games = games.filter(v => v.homeGame === "HOME");
+
+        // console.log("HOME GAMES", games)
+        // console.log("practicesGroupedByDate", practicesGroupedByDate);
+        
+        $('#testTbl').html(""); // clear out existing
+
+        for(monday of getPreviousMondayAndNext()){
+          practicesGroupedByDayOfWeek = {};
+          let dayInc = 0;
+          for([day, practices] of Object.entries(practicesGroupedByDate)){
+            var d = new Date(monday);
+            d.setDate(d.getDate() + dayInc++);
+            practicesGroupedByDayOfWeek[d] = practices;
+          }
+
+          createHtmlTable(practicesGroupedByDayOfWeek, games, monday);
+        }
+      }
+
+      // const dayOfWeekLookup = ["Sunday",  "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",  "Saturday"]
+      // https://stackoverflow.com/questions/35088088/javascript-for-getting-the-previous-monday
+      function getPreviousMondayAndNext(){
+          var date = new Date();
+          var day = date.getDay();
+          var prevMonday = new Date();
+          var nextMonday = new Date();
+
+          if(day == 6){ //Saturday
+              prevMonday.setDate(date.getDate() +2); //sat to Mon -> 2
+          }
+          else if(day == 0){ // Sunday
+              prevMonday.setDate(date.getDate() +1); // Sun to Mon -> 1
+          }
+          else if(day == 1){ // Monday
+              prevMonday.setDate(date.getDate() -0); // Already monday, dont change
+          }
+          else if(day == 2){ // Tuesday
+              prevMonday.setDate(date.getDate() -1); // Tues back 1 to Monday
+          }
+          else if(day == 3){ // Wednesday
+              prevMonday.setDate(date.getDate() -2); // Wed back 2 to Monday
+          }
+          else if(day == 4){ // Thurs
+              prevMonday.setDate(date.getDate() -3); // Thurs back 3 to Monday
+          }
+          else if(day == 5){ // Friday
+              prevMonday.setDate(date.getDate() -4); // Friday back 4 to Monday
+          }
+     
+
+          nextMonday.setDate(prevMonday.getDate() + 7);
+
+          return [prevMonday, nextMonday];
+      }
+
+      /**
+       * Find a game that starts / ends between the practices times for the day
+       * 
+       * games - list of games
+       * dateOfPractice - Sunday, May 21, 2023 
+       * timeOfPractice - 5:30-7:00pm
+       **/
+      function getGamesDuringPractice(games, dateOfPractice, timeOfPractice){
+        console.log("dateOfPractice", dateOfPractice, "timeOfPractice", timeOfPractice)
+        console.log(games)
+
+      
+        // '5:30-7:00pm'
+        timeOfPractice = timeOfPractice.replace(new RegExp("pm", "ig"), "") //replace all ignore case 
+        const practiceStartEnd = timeOfPractice.split('-'); // [5:30, 7:00]
+
+        const practice_START_InMinutes = 
+          new Date(dateOfPractice + " " + practiceStartEnd[0]+ " PM").getHours() * 60 + 
+          new Date(dateOfPractice + " " + practiceStartEnd[0]+ " PM").getMinutes();
+        const practice_END_InMinutes = 
+          new Date(dateOfPractice + " " + practiceStartEnd[1]+ " PM").getHours() * 60 + 
+          new Date(dateOfPractice + " " + practiceStartEnd[1]+ " PM").getMinutes();
+
+        //set the game lemght as an hour (60 min), check if the games start between 
+        //practice times or it ends between practice times
+        gameBetweenPracticeTimes = games.filter((g) => {
+          const game_START_InMinutes = 
+            new Date(g.date + " " + g.time).getHours() * 60 + 
+            new Date(g.date + " " + g.time).getMinutes();
+          // console.log(`${dateOfPractice}==${g.date}`, `${new Date(dateOfPractice).getTime() == new Date(g.date).getTime()}`,
+          // `${practice_START_InMinutes} <= ${game_START_InMinutes} < ${practice_END_InMinutes}`, 
+          // `${practice_START_InMinutes <= game_START_InMinutes &&  game_START_InMinutes < practice_END_InMinutes}`,
+          // `${practice_START_InMinutes} <= ${game_START_InMinutes +60 } < ${practice_END_InMinutes}`, 
+          // `${practice_START_InMinutes <= game_START_InMinutes + 60 && game_START_InMinutes + 60 < practice_END_InMinutes}`,
+          // "OVERAlL", `${new Date(dateOfPractice).getTime() == new Date(g.date).getTime() && (
+          //     (practice_START_InMinutes <= game_START_InMinutes &&  game_START_InMinutes < practice_END_InMinutes) ||            
+          //     (practice_START_InMinutes <= game_START_InMinutes + 60 && game_START_InMinutes + 60 < practice_END_InMinutes) )}`)
+
+          return new Date(dateOfPractice).getTime() == new Date(g.date).getTime() && (
+              (practice_START_InMinutes <= game_START_InMinutes &&  game_START_InMinutes < practice_END_InMinutes) ||            
+              (practice_START_InMinutes <= game_START_InMinutes + 60 && game_START_InMinutes + 60 < practice_END_InMinutes) )
+        });
+
+        // When games are booked, they should be booked as OP#A or OP#C, So this would block off field B or D additionally
+        let reserveOtherSideOfField =[]
+        for (g of gameBetweenPracticeTimes){   
+          g.fieldNum = g.fieldNum.toUpperCase();    
+
+          if(g.fieldNum.startsWith("OP") && g.fieldNum.length == 3){ //Only OPX is listed, not a or b. Default to field A
+            g.fieldNum = g.fieldNum + "A";
+          }
+          reserveOtherSideOfField.push(g)
+          let copiedGame = JSON.parse(JSON.stringify(g)); 
+          copiedGame.fieldNum = copiedGame.fieldNum.replace(new RegExp("A", "ig"), "B") //Book Fields A&B
+          copiedGame.fieldNum = copiedGame.fieldNum.replace(new RegExp("C", "ig"), "D") //Book Fields C&D
+          reserveOtherSideOfField.push(copiedGame)
+        }
+
+        return reserveOtherSideOfField;
+      }
+
+      function createHtmlTable(practicesGroupedByDate, games, mondayDate){
+        const dayOfWeekLookup = ["Sunday",  "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",  "Saturday"];
+        var table = $('<table></table>').addClass('tblWeeklySchedule');
+
+        row = $(`<tr class="tblHeader"><td colspan="${TIME_FIELD_NAMES.length}">Game & Practices at Opatut Park for the week of Monday, ${new Date(mondayDate).toLocaleString().split(',')[0]}</td></tr>`); // 
+        table.append(row);
 
         row = $('<tr></tr>');
         // order the table by field names
@@ -76,21 +211,32 @@
             row.append(td);
         }
         table.append(row);
-
-        row = $('<tr></tr>');
+        
         //foreach dict of Day (Monday -> Thursday)
-        for([day, practices] of Object.entries(groupedByDate)){
-            row = $(`<tr class="groupedByDate"><td colspan="${TIME_FIELD_NAMES.length}">${day}</td></tr>`); // 
+        for([day, practices] of Object.entries(practicesGroupedByDate)){
+            let dayOfWeek = dayOfWeekLookup[new Date(day).getDay()]
+            let dayStr = new Date(day).toLocaleString().split(',')[0];          
+            row = $(`<tr class="groupedByDate"><td colspan="${TIME_FIELD_NAMES.length}">${dayOfWeek}, ${dayStr}</td></tr>`); // 
             table.append(row);
 
             //generally should only be 2 practice times per night, 5:30->7 & 7->830
             for(practice of practices){
                 row = $('<tr></tr>');
+                gamesDuringPractice = getGamesDuringPractice(games, dayStr, practice.Time)
 
                 // order the table by field names
                 for(field of TIME_FIELD_NAMES){
-                    var td = $(`<td>${practice[field]}</td>`)
+                  gameOnField = gamesDuringPractice.find(g=> g.fieldNum == field);
+                  if(gameOnField){
+                    let title = `${gameOnField.fieldNum} - ${gameOnField.freeholdTeam} vs ${gameOnField.opponent} @ ${gameOnField.date} : ${gameOnField.time} Game# ${gameOnField.matchNum}`
+                    var td = $(`<td class="gameDuring" title="${title}">${practice[field]}<br /><div>GAME ${gameOnField.freeholdTeam}</div></td>`)
                     row.append(td);
+                  }
+                  else{
+                    let goalieClass = practice[field].toUpperCase() == "GOALIE" ? "goalie" : "";
+                    var td = $(`<td class="${goalieClass}">${practice[field]}</td>`)
+                    row.append(td);
+                  }
                 }
                 table.append(row);
             }
@@ -108,23 +254,39 @@
         return groupedBy;
       }
 
+      /**
+       * Convert Google Sheet response for Games
+       **/
+      function convert2DArrayToJson(json){
+        // vacate headers/keys
+        let data = json;
+        let keys = data.shift()
+        console.log("Header keys:", keys)
+        // create JSON objects from Array
+        let result = data.map(data =>
+            Object.assign({}, ...data.map((x, i) => ({ [keys[i]]: x })))
+        );
+        // console.log("convert2DArrayToJson", result);
+        return result
+      }
 
-        // Time	OP4A	OP4B	OP4C	OP4D	OP6A	OP6B	OP6C	OP6D	OP5	OP5	OP3A	OP3B
-        // Mon	7v7	7v7	7v7	7v7	9v9	9v9	9v9	9v9	11v11	11v11	7v7	7v7
-        // 5:30-7:00pm	Flames	Wildcats	Heat		Falcons	Scorpions	Crush	Dragons	Breakers		Red Bulls	
-        // 7:05-8:35pm	Arsenal	Blues	 Rockets		Freedom	Strikers	Cobras	Union	Storm	Force		Liberty
-                                                        
-        // Tues												
-        // 5:30-7:00pm	Avengers	Mavericks	Dash	Galaxy	Thunder	Reign	Goalie	Flash	Phoenix	Jaguars		
-        // 7:05-8:35pm	Chaos	Wildfire	Blaze	Riptide	Fusion	Lightning	Goalie	Warriors	Phantoms	Rebels		
-                                                        
-        // Wed												
-        // 5:30-7:00pm	Arsenal	Blues	Rockets	Goalie	Freedom	Strikers	Cobras	Union		Red Bulls	Heat	Liberty
-        // 7:05-8:35pm	Flames	Wildcats	Wildfire	Goalie	Falcons	Scorpions	Crush	Dragons	Breakers	Storm	Force	
-                                                        
-        // Thurs												
-        // 5:30-7:00pm	Chaos	Dash	Mavericks	Riptide	Fusion	Lightning			Phantoms	Rebels		
-        // 7:05-8:35pm	Avengers		Blaze	Galaxy	Thunder	Reign	Warriors	Flash	Phoenix	Jaguars		
+
+      // Time	OP4A	OP4B	OP4C	OP4D	OP6A	OP6B	OP6C	OP6D	OP5	OP5	OP3A	OP3B
+      // Mon	7v7	7v7	7v7	7v7	9v9	9v9	9v9	9v9	11v11	11v11	7v7	7v7
+      // 5:30-7:00pm	Flames	Wildcats	Heat		Falcons	Scorpions	Crush	Dragons	Breakers		Red Bulls	
+      // 7:05-8:35pm	Arsenal	Blues	 Rockets		Freedom	Strikers	Cobras	Union	Storm	Force		Liberty
+                                                      
+      // Tues												
+      // 5:30-7:00pm	Avengers	Mavericks	Dash	Galaxy	Thunder	Reign	Goalie	Flash	Phoenix	Jaguars		
+      // 7:05-8:35pm	Chaos	Wildfire	Blaze	Riptide	Fusion	Lightning	Goalie	Warriors	Phantoms	Rebels		
+                                                      
+      // Wed												
+      // 5:30-7:00pm	Arsenal	Blues	Rockets	Goalie	Freedom	Strikers	Cobras	Union		Red Bulls	Heat	Liberty
+      // 7:05-8:35pm	Flames	Wildcats	Wildfire	Goalie	Falcons	Scorpions	Crush	Dragons	Breakers	Storm	Force	
+                                                      
+      // Thurs												
+      // 5:30-7:00pm	Chaos	Dash	Mavericks	Riptide	Fusion	Lightning			Phantoms	Rebels		
+      // 7:05-8:35pm	Avengers		Blaze	Galaxy	Thunder	Reign	Warriors	Flash	Phoenix	Jaguars		
 
       function convertSpreadsheetToPracticeTime(data){
         data = data.splice(2,14) //remove the 1st 2 rows and everything after the last 
@@ -239,7 +401,7 @@
         const {checked} = e.target;
 
         if (typeof getTestRequest == 'undefined') {
-          fetchPracticesFromSheet();
+          fetchDataFromSheet();
         }
         else{
           populateTableFromMockData()
@@ -270,7 +432,7 @@
       /* tr {padding-left: 15px;padding-right: 15px;} */
 
       #testTbl table{
-        margin: 0 auto;
+        margin: 0 auto 40px auto;
       }
 
       table {
@@ -282,7 +444,28 @@
         padding-left: 15px;padding-right: 15px;
       }
       th {font-size: large;}
+      
+      .tblWeeklySchedule{
+        max-width: 1095px;
+        table-layout: fixed;
+      }
+      
+      .tblHeader{
+        font-size: xx-large;
+        font-weight: bolder;
+        background-color: rgba(0,93,219,1);
+      }
+      .gameDuring{
+        background-color: yellow;
+      }
 
+      .gameDuring div {
+        font-weight: bolder;
+      }
+
+      .goalie{
+        background-color: #dbeaff;
+      }
     </style>
     
   </head>
@@ -294,21 +477,22 @@
          Freehold Practice Schedule
         </h1>
       </div>
-      <div class="pageControls" style="display: none;">
-        <input id="btnFetchFromSheet" type="button" value="Refresh" onclick="fetchPracticesFromSheet();" />
+      <div class="pageControls">
+        <input id="btnFetchFromSheet" type="button" value="Refresh" onclick="fetchDataFromSheet();" />
         <input id="btnFetchFromMock" type="button" value="Load From Test File" onclick="populateTableFromMockData();" />
-        <input type="checkbox" id="ckbShowPastGames" onchange="showOldGamesCkbChange(event)"/>
-        <label for="ckbMessage">Show games in the past</label>
+        <!-- <label for="ckbMessage">Show games in the past</label> -->
       </div>
-      <!-- <div id="messageDiv">
-        Hover over the game  to see game details
-      </div> -->
+      <div id="messageDiv">
+        This page is setup to show the practice times set at Opatut Park Monday to Thursday. If there's a game that's
+         scheduled at Opatut it will be highlighted below. <br />
+        Hover over the yellow practice / game time to see details about the scheduled game. 
+      </div>
       <br />
       <br />
       <div id="testTbl"></div>
       <br />
     </form>
   </body>
-
+  <!-- OPATUT PRACTICE SCHEDULE -->
 </html>
 

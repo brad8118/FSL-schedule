@@ -1,4 +1,4 @@
-function getTestRequest() {
+function getTestRequest_PracticeSchedule() {
     return {
         "range": "practice_schedule!A1:X1000",
         "majorDimension": "ROWS",

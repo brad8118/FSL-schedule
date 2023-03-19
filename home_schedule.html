@@ -52,11 +52,10 @@
 
         const homeGames = converted.filter(v => v.homeGame === "HOME");
         homeGames.sort((a, b) => (new Date(a.date) - new Date(b.date) ))
-        console.log("HOME GAMES", homeGames)
+        // console.log("HOME GAMES", homeGames)
 
         var gamesGroupedByDate = groupBy(homeGames,'date');
-        console.log("gamesGroupedByDate", gamesGroupedByDate);
-        // console.log("gamesGroupedByDate_2", gamesGroupedByDate_2);
+        // console.log("gamesGroupedByDate", gamesGroupedByDate);
         
         $('#testTbl').html(""); // clear out existing
         for (var key in gamesGroupedByDate){
@@ -220,7 +219,7 @@
     <form>
       <div class="pageTitle">
         <h1>
-         Freehold Soccer Game Schedule
+         Freehold Soccer Home Game Schedule
         </h1>
       </div>
       <div class="pageControls">
