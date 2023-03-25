@@ -148,9 +148,9 @@
             if (gameOnField.length > 0){
               var gamesStr = "";
               for(g of gameOnField){
-                gamesStr += g.freeholdTeam; 
+                gamesStr += `${g.freeholdTeam}(${g.year})`; 
               }
-              body_row[index].append(`<td title="vs ${g.opponent} Game# (${g.matchNum})  League (${g.leagueType})">${gamesStr}</td>`);
+              body_row[index].append(`<td title="vs ${g.opponent} Game# (${g.matchNum})  League (${g.leagueType}) ${g.year}">${gamesStr}</td>`);
             }else{
               body_row[index].append('<td> - </td>');
             }
