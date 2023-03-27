@@ -144,11 +144,14 @@
           body_row[index].append('<td>' + grouped[0].time + '</td>');
 
           for(field of fields){
-            const gameOnField = grouped.filter(v => v.fieldNum == field);
-            if (gameOnField.length > 0){
+            const gamesOnField = grouped.filter(v => v.fieldNum == field);
+            if (gamesOnField.length > 0){
               var gamesStr = "";
-              for(g of gameOnField){
-                gamesStr += `${g.freeholdTeam}(${g.year})`; 
+              var classGamesAtSameTime = "";
+              // allow for muliple games at the same time & same field
+              for(g of gamesOnField){
+                gamesStr += `<span class="${classGamesAtSameTime}">${g.freeholdTeam}(${g.year})</span>`; 
+                classGamesAtSameTime = "sameTimeSameField";
               }
               body_row[index].append(`<td title="vs ${g.opponent} Game# (${g.matchNum})  League (${g.leagueType}) ${g.year}">${gamesStr}</td>`);
             }else{
@@ -211,6 +214,10 @@
       }
       th {font-size: large;}
 
+      .sameTimeSameField{
+        background-color: red;
+        padding-left: 10px;
+      }
     </style>
     
   </head>

@@ -1678,7 +1678,7 @@ function getTestRequest(){
       "EDP Futures",
       "Friday, September 16, 2022",
       "3111",
-      "7:15 PM",
+      "6:00 PM",
       "HOME",
       "Blaze (NJ)",
       "Central Jersey Futbol Alliance CJFA Reign 2013 (NJ)",
@@ -1688,23 +1688,23 @@ function getTestRequest(){
       "GU10",
       "EDP",
       "Capelli Sport Complex",
-      "Field 6"
+      "JM6"
     ],
     [
       "EDP Futures",
-      "Saturday, September 24, 2022",
+      "Friday, September 16, 2022",
       "3109",
       "6:00 PM",
       "HOME",
-      "Blaze (NJ)",
-      "Staten Island Soccer Club SISC Lightning 2013 Girls (NYE)",
+      "TEST TEAM",
+      "ugly team",
       "Hidden",
       "GU10 EDP Futures Central Red",
       "Capelli Sport Complex - Field 6 - SS #1",
       "GU10",
       "EDP",
       "Capelli Sport Complex - Field 6",
-      "SS #1"
+      "JM6"
     ],
     [
       "EDP Futures",
