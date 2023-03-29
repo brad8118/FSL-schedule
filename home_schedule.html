@@ -17,6 +17,9 @@
     </script>
 
     <script type="text/javascript">
+
+      const dayOfWeekLookup = ["Sunday",  "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",  "Saturday"];
+
      
       function populateTableFromMockData(){
         var response = getTestRequest();
@@ -101,7 +104,12 @@
           table_body = $('<tbody/>'),
           body_row = [];
 
-        groupByDate.append('<div class="groupedByDate">' + gamesByDate[0].date + "<div/>");
+        // let formattedDay =  `${dayOfWeekLookup[new Date(gamesByDate[0].date).getDay()]}, ${gamesByDate[0].date}`
+        // let formattedDay =  `${new Date(gamesByDate[0].date)}`
+        let dayOfWeek = dayOfWeekLookup[new Date(gamesByDate[0].date).getDay()]
+        let dayStr = new Date(gamesByDate[0].date).toLocaleString().split(',')[0];   
+
+        groupByDate.append(`<div class="groupedByDate">${dayOfWeek}, ${dayStr}<div/>`);
         
         var gamesGroupedByTime = groupBy(gamesByDate, 'time');        
         if("" in gamesGroupedByTime){
