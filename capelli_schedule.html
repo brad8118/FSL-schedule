@@ -92,9 +92,14 @@
         var converted = convert2DArrayToJson(games);
 
         // if the checkbox is checked show older dates
-        // the dates in the sheet doesn't have the year. :(
+        // the dates in the sheet doesn't have the year. :( -> v.date == "Monday 2/27"
         if (!$('#ckbShowPast').is(":checked")){
-          converted = converted.filter(v => new Date(v.date + "/" + new Date().getFullYear()).getTime() >= new Date().getTime());
+          converted = converted.filter(function(v){
+            let today = new Date();
+            today.setHours(0,0,0,0)
+            let gameDate = new Date(v.date + "/" + new Date().getFullYear());
+            return gameDate.getTime() >= today.getTime()
+            });
         }
 
         // console.log("HOME GAMES", homeGames)
@@ -429,5 +434,6 @@
       <br />
     </form>
   </body>
+  <!-- CAPELLI -->
 </html>
 
