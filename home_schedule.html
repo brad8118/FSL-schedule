@@ -75,12 +75,15 @@
             for(ve of vevent){
               if(ve[0] == "description" && ve[3].includes("VEO")){
                 let camera={};
+                camera['camera']="camera # not set in description";
                 if(ve[3].toLowerCase().includes("veo 1"))
                   camera['camera']="VEO 1";
                 else if(ve[3].toLowerCase().includes("veo 2"))
                   camera['camera']="VEO 2";
                 else if(ve[3].toLowerCase().includes("veo 3"))
                   camera['camera']="VEO 3";
+                else
+                camera['failed'] = "veo 1,2,3 not found in description"
                 
                 for(i of vevent){
                   if(i[0] == 'dtstart')
@@ -249,7 +252,12 @@
           if(c['field'].toLowerCase().includes(field.toLowerCase())){
 
             if( new Date(c['start']).getTime() == currentGameTime.getTime()){
-                return ` <span class='${c['camera'].replace(" ", "")}'>(${c['camera']})</span>`
+              console.log("brad")
+              if(c['failed']){
+                console.log("issue getting camera value")
+                console.log(c)
+              }
+              return ` <span class='${c['camera'].replace(" ", "")}'>(${c['camera']})</span>`
             }
           }
         }
@@ -333,6 +341,7 @@
       </div>
       <div id="messageDiv">
         Hover over the game  to see game details <br />
+        Cameras are being organized by Dan. Please have the team's camera person register on team
         For details on cameras contact Dan @ training@freeholdsoccer.com  - (732-522-0263)
       </div>
       <br />
