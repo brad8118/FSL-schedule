@@ -2,8 +2,8 @@
 <html>
 
   <head>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js">
-    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+    <script src="https://javascript.daypilot.org/demo/lite/js/daypilot-all.min.js?v=130" type="text/javascript"></script>
 
     <script src="mock_league_schedule.js" ></script>
 
@@ -13,6 +13,8 @@
           $('#btnFetchFromMock').hide()
           fetchGamesFromSheet();
         }
+
+        createTable()
       });
     </script>
 
@@ -190,6 +192,39 @@
         }
       }
 
+
+      ////////////////////////////////////////////
+
+      function createTable(){
+        const dp = new DayPilot.Calendar("dp");
+        dp.viewType = "Resources";
+        dp.columns.list = [
+          { name: "Meeting Room A", id: "A"},
+          { name: "Meeting Room B", id: "B" },
+          { name: "Meeting Room C", id: "C" },
+          { name: "Meeting Room D", id: "D" },
+          { name: "Meeting Room E", id: "E" },
+          { name: "Meeting Room F", id: "F" },
+        ];
+        dp.events.list = [
+          {
+            start: "2022-03-25T12:00:00",
+            end: "2022-03-25T14:00:00",
+            id: "1",
+            text: "Event 1",
+            resource: "B"
+          },
+          {
+            start: "2022-03-25T15:00:00",
+            end: "2022-03-25T17:00:00",
+            id: "2",
+            text: "Event 2",
+            resource: "C"
+          }
+        ];
+        dp.init();
+      }
+
     </script>
     <style>
       .pageTitle {
@@ -248,6 +283,7 @@
       </div>
       <br />
       <br />
+      <div id="dp"></div>
       <div id="testTbl"></div>
       <br />
     </form>
