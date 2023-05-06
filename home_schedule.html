@@ -4,6 +4,7 @@
   <head>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js">
     </script>
+    
 
     <script src="mock_league_schedule.js" ></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ical.js/0.0.3/ical.min.js" ></script>
@@ -19,6 +20,7 @@
     </script>
 
     <script type="text/javascript">
+      const cameraMode = new URLSearchParams(window.location.search).has('camera');
 
       const dayOfWeekLookup = ["Sunday",  "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",  "Saturday"];
 
@@ -29,8 +31,8 @@
       }
 
       function fetchDataOnLoad(){
-        $.when(getAjax_fetchGamesFromSheet(), getAjax_getCameraSchedule()).done(function(games, camera){         
-          populateTableWithGames(games[0].values, camera[0]);
+        $.when(getAjax_fetchGamesFromSheet(), getAjax_fetchCameraFromSheet()).done(function(games, camera){         
+          populateTableWithGames(games[0].values, camera[0].values);
         });   
       }
 
@@ -46,6 +48,48 @@
           url: url,
           cache: false,
           data: "",
+          success: function(response) {
+            console.log(response)
+            // populateTableWithGames(response.values);
+          }
+        });
+      }
+
+      function getAjax_fetchCameraFromSheet() {
+        let spreadsheetId="1peqZ_mflm9mLBVnsDzMsSDGLTq1mmpy4Qc0cpKVVUkc"
+        let range = "camera";
+        let apiKey = "AIzaSyBvV43w6Zu3mpvKhTbn-Flh5jlc-7uzL5Y";
+        let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
+        
+        return $.ajax({
+          type: "GET",
+          url: url,
+          cache: false,
+          data: "",
+          success: function(response) {
+            console.log(response)
+            // populateTableWithGames(response.values);
+          }
+        });
+      }
+
+      function saveCameraToSheet(cameraSchedule) {
+        let spreadsheetId="1peqZ_mflm9mLBVnsDzMsSDGLTq1mmpy4Qc0cpKVVUkc"
+        let range = "camera!A2";
+        let apiKey = "4ff406e604c011d4499a8ce1f874d7ebc0b3e2f9";
+        // let apiKey = "AIzaSyBvV43w6Zu3mpvKhTbn-Flh5jlc-7uzL5Y"; // key1
+        // let apiKey = "AAIzaSyAa8yy0GdcGPHdtD083HiGGx_S0vMPScDM";
+        let otherDefaults = "valueInputOption=RAW&includeValuesInResponse=true&alt=json"
+        let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?${otherDefaults}&key=${apiKey}`;
+
+          // /values/camera!A2?valueInputOption=RAW&includeValuesInResponse=true&alt=json&key=AIzaSyAa8yy0GdcGPHdtD083HiGGx_S0vMPScDM
+          // /values/camera!A2?valueInputOption=RAW&includeValuesInResponse=true&alt=json&key=AAIzaSyAa8yy0GdcGPHdtD083HiGGx_S0vMPScDM
+
+        return $.ajax({
+          type: "PUT",
+          url: url,
+          cache: false,
+          data : { 'values':[cameraSchedule],"majorDimension":"ROWS"},
           success: function(response) {
             console.log(response)
             // populateTableWithGames(response.values);
@@ -103,7 +147,8 @@
       }
 
       function populateTableWithGames(games, camera){
-        let cameraSchedule = convertCameraScheduleResponse(camera);
+        // let cameraSchedule = convertCameraScheduleResponse(camera);
+        let cameraSchedule = convert2DArrayToJson(camera);
         var converted = convert2DArrayToJson(games);
         var ckbShowPastGames = $("#ckbShowPastGames");
 
@@ -206,7 +251,8 @@
           head_row.append(`<th>${f}</th>`);
         }
         
-        // $.each(gamesByDate, function(index, gamesGroupedByTime) {
+        const cameraList = ['NONE', 'VEO1', 'VEO2', 'VEO3', 'TRACE1', 'TRACE2'];
+
         var index = -1;
         $.each(gamesGroupedByTime, function(time, grouped) {
           // console.log("grouped ", grouped)
@@ -219,14 +265,35 @@
             if (gamesOnField.length > 0){
               var gamesStr = "";
               var classGamesAtSameTime = "";
+              
               // allow for muliple games at the same time & same field
-              for(g of gamesOnField){
-                // console.log(g['freeholdTeam'])
-                let camera = getCamera(cameraSchedule, grouped[0].time, grouped[0].date, field);
-                gamesStr += `<span class="${classGamesAtSameTime}">${g.freeholdTeam}(${g.year})${camera}</span>`; 
+              for(g of gamesOnField){                
+                gamesStr += `<span class="${classGamesAtSameTime}">${g.freeholdTeam}(${g.year})</span>`; 
                 classGamesAtSameTime = "sameTimeSameField";
               }
-              body_row[index].append(`<td title="vs ${g.opponent} Game# (${g.matchNum})  League (${g.leagueType}) ${g.year}">${gamesStr}</td>`);
+
+              let camera = getCamera(cameraSchedule, grouped[0].time, grouped[0].date, field);
+
+              var dropdown = $('<select onchange="cameraChanged(this)" />');
+              for(c of cameraList) {
+                  $('<option />', {value: c, text: c}).appendTo(dropdown);
+              }
+
+              let id =`${grouped[0].date}__${grouped[0].time}__${field}`;
+              id = id.replaceAll('/', "-")
+              id = id.replaceAll(' ', "")
+              id = id.replaceAll(':', "")
+              var td = $(`<td id="${id}" class="${camera}" title="vs ${g.opponent} Game# (${g.matchNum})  League (${g.leagueType}) ${g.year}"> </td>`);
+              if(cameraMode){
+                td.append(dropdown);
+                td.append("<br />");
+              }
+
+              td.append(gamesStr);
+              // if(camera)
+              //   td.append(`<br /><span>${camera}</span>`);
+
+              body_row[index].append(td);
             }else{
               body_row[index].append('<td> - </td>');
             }
@@ -246,22 +313,72 @@
 
       function getCamera(cameraSchedule, time, date, field){
         // 2023-04-17T19:15:00
-        let currentGameTime = new Date(`${date} ${time}`)
-        for(c of cameraSchedule){
-          let cameraDateTime = new Date(c['start'])
-          if(c['field'].toLowerCase().includes(field.toLowerCase())){
 
-            if( new Date(c['start']).getTime() == currentGameTime.getTime()){
-              console.log("brad")
-              if(c['failed']){
-                console.log("issue getting camera value")
-                console.log(c)
-              }
-              return ` <span class='${c['camera'].replace(" ", "")}'>(${c['camera']})</span>`
-            }
-          }
+        let cameraOnField = cameraSchedule.find(function (c) {       
+          time = time.replaceAll(" ", "")
+          c_time = c.time.replaceAll(" ", "")
+          c_time = c_time.toUpperCase()
+          field = field.replaceAll(" ", "")
+          c_field = c.field.replaceAll(" ", "")
+          c_field = c_field.toUpperCase()
+
+          return c.date == date && c_time == time && field == c_field;
+          });
+        
+        if(cameraOnField){
+          let camera = cameraOnField.camera;
+          camera = camera.toUpperCase()
+          camera = camera.replaceAll(" ", "")
+          return camera
         }
+
         return ""
+      }
+
+      // this was parsing from calendar feed
+      // function getCamera(cameraSchedule, time, date, field){
+      //   // 2023-04-17T19:15:00
+      //   let currentGameTime = new Date(`${date} ${time}`)
+      //   for(c of cameraSchedule){
+      //     let cameraDateTime = new Date(c['start'])
+      //     if(c['field'].toLowerCase().includes(field.toLowerCase())){
+
+      //       if( new Date(c['start']).getTime() == currentGameTime.getTime()){
+      //         console.log("brad")
+      //         if(c['failed']){
+      //           console.log("issue getting camera value")
+      //           console.log(c)
+      //         }
+      //         return ` <span class='${c['camera'].replace(" ", "")}'>(${c['camera']})</span>`
+      //       }
+      //     }
+      //   }
+      //   return ""
+      // }
+
+      /**
+       * when in camera mode url has camera=true in the url, dropdown is available to set camera
+       * This is fired when a dropdown changes values
+       **/
+      function cameraChanged(dropdown){
+        $(dropdown).parent().removeClass(`cameraSet VEO1 VEO2 VEO3 TRACE1 TRACE2`);
+
+        if(dropdown.value != "NONE")
+          $(dropdown).parent().addClass(`cameraSet ${dropdown.value}`);
+        
+          // var parent_id = $(dropdown).parent().attr("id");
+        // console.log(dropdown.value)
+        // console.log(pid)
+      }
+
+      function saveCameraSettings(){
+        let camerasSet = $(".cameraSet")
+        let scheduled = {};
+        for(c of camerasSet){
+          scheduled[$(c).attr('id')] = $(c).attr('class').replace("cameraSet ", "")
+        }
+        // console.log(scheduled)
+        saveCameraToSheet(scheduled)
       }
         
       function showOldGamesCkbChange(e){
@@ -316,10 +433,20 @@
         background-color: rgb(0, 217, 255);
       }
       .VEO2{
-        background-color: rgb(0, 89, 255);
+        background-color: rgb(81, 121, 197);
       }
       .VEO3{
-        background-color: rgb(21, 126, 82);
+        background-color: rgb(116, 190, 160);
+      }
+      .TRACE1{
+        background-color: rgb(204, 152, 216);
+      }
+      .TRACE2{
+        background-color: rgb(131, 130, 79);
+      }
+
+      .cameraKey{        
+        padding: 10px;
       }
 
     </style>
@@ -339,11 +466,18 @@
         <input type="checkbox" id="ckbShowPastGames" onchange="showOldGamesCkbChange(event)"/>
         <label for="ckbMessage">Show games in the past</label>
       </div>
+      <br />
       <div id="messageDiv">
-        Hover over the game  to see game details <br />
+        Hover over the game  to see game details <br /> <br />
         Cameras are being organized by Dan. Please have the team's camera person register on team
         For details on cameras contact Dan @ training@freeholdsoccer.com  - (732-522-0263)
+        <!-- <div id="btnSaveCamera" onClick="saveCameraSettings()">Save Camera Settings</div>  -->
+        <div>
+          <br />
+          <span class="VEO1 cameraKey">VEO1</span><span class="VEO2 cameraKey">VEO2</span><span class="VEO3 cameraKey">VEO3</span><span class="TRACE1 cameraKey">TRACE1</span><span class="TRACE2 cameraKey">TRACE2</span>
+        </div>
       </div>
+
       <br />
       <br />
       <div id="testTbl"></div>
