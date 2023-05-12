@@ -56,9 +56,11 @@
       }
 
       function getAjax_fetchCameraFromSheet() {
-        let spreadsheetId="1peqZ_mflm9mLBVnsDzMsSDGLTq1mmpy4Qc0cpKVVUkc"
+        // register for camera
+        let spreadsheetId="1kDDCR00vmKfweClc4zgR5f761yoIoa-9q5Uu1da2iSk"        
+        let apiKey = "AIzaSyA46O2IahxdN4TVVhEwg5VWGx73aoZ2edk";
+
         let range = "camera";
-        let apiKey = "AIzaSyBvV43w6Zu3mpvKhTbn-Flh5jlc-7uzL5Y";
         let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
         
         return $.ajax({
@@ -68,7 +70,6 @@
           data: "",
           success: function(response) {
             console.log(response)
-            // populateTableWithGames(response.values);
           }
         });
       }
@@ -322,7 +323,7 @@
           c_field = c.field.replaceAll(" ", "")
           c_field = c_field.toUpperCase()
 
-          return c.date == date && c_time == time && field == c_field;
+          return c.date == date && c_time == time && field.toUpperCase() == c_field;
           });
         
         if(cameraOnField){
@@ -469,12 +470,12 @@
       <br />
       <div id="messageDiv">
         Hover over the game  to see game details <br /> <br />
-        Cameras are being organized by Dan. Please have the team's camera person register on team
-        For details on cameras contact Dan @ training@freeholdsoccer.com  - (732-522-0263)
+        For details on Camera assigment and questions see the Camera Page
         <!-- <div id="btnSaveCamera" onClick="saveCameraSettings()">Save Camera Settings</div>  -->
         <div>
           <br />
           <span class="VEO1 cameraKey">VEO1</span><span class="VEO2 cameraKey">VEO2</span><span class="VEO3 cameraKey">VEO3</span><span class="TRACE1 cameraKey">TRACE1</span><span class="TRACE2 cameraKey">TRACE2</span>
+          <br /> <br /> If your team hasn't registered yet for cameras please do -> <a href="https://sites.google.com/view/fsl-coaches-corner/camera">Camera Page</a>
         </div>
       </div>
 
