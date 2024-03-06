@@ -26,7 +26,8 @@
 
     <script type="text/javascript">
      
-      const TIME_FIELD_NAMES = ['Time', 'OP4A', 'OP4B', 'OP4C', 'OP4D', 'OP6A', 'OP6B', 'OP6C', 'OP6D', 'OP5A', 'OP5B', 'OP3A', 'OP3B'];
+      // const TIME_FIELD_NAMES = ['Time', 'OP4A', 'OP4B', 'OP4C', 'OP4D', 'OP6A', 'OP6B', 'OP6C', 'OP6D', 'OP5A', 'OP5B', 'OP3A', 'OP3B'];
+      const TIME_FIELD_NAMES = ['Time', 'OP4A', 'OP4B', 'OP4C', 'OP4D', 'OP6A', 'OP6B', 'OP6C', 'OP6D', 'OP5A1','OP5A2', 'OP5B1', 'OP5B2', 'MJT1A','MJT1B', 'MJT2A', 'MJT2B'];
 
       function populateTableFromMockData(){
         var games = getTestRequest();
@@ -184,14 +185,27 @@
         for (g of gameBetweenPracticeTimes){   
           g.fieldNum = g.fieldNum.toUpperCase();    
 
-          if(g.fieldNum.startsWith("OP") && g.fieldNum.length == 3){ //Only OPX is listed, not a or b. Default to field A
-            g.fieldNum = g.fieldNum + "A";
+          //OP5 is split up into 4 sections, OP5A1, OP5A2, OP5B1, OP5B2
+          if(g.fieldNum == "OP5"){
+          
+
+            for(op5_name of ['OP5A1','OP5A2', 'OP5B1', 'OP5B2']){
+              let OP5XX = JSON.parse(JSON.stringify(g)); 
+              OP5XX.fieldNum = op5_name;
+              reserveOtherSideOfField.push(OP5XX);
+            }
           }
-          reserveOtherSideOfField.push(g)
-          let copiedGame = JSON.parse(JSON.stringify(g)); 
-          copiedGame.fieldNum = copiedGame.fieldNum.replace(new RegExp("A", "ig"), "B") //Book Fields A&B
-          copiedGame.fieldNum = copiedGame.fieldNum.replace(new RegExp("C", "ig"), "D") //Book Fields C&D
-          reserveOtherSideOfField.push(copiedGame)
+          else{
+            if(g.fieldNum.startsWith("OP") && g.fieldNum.length == 3){ //Only OPX is listed, not a or b. Default to field A
+              g.fieldNum = g.fieldNum + "A";
+            }
+            reserveOtherSideOfField.push(g);
+            let copiedGame = JSON.parse(JSON.stringify(g)); 
+            copiedGame.fieldNum = copiedGame.fieldNum.replace(new RegExp("A", "ig"), "B") //Book Fields A&B
+            copiedGame.fieldNum = copiedGame.fieldNum.replace(new RegExp("C", "ig"), "D") //Book Fields C&D
+            reserveOtherSideOfField.push(copiedGame)
+            }
+
         }
 
         return reserveOtherSideOfField;
@@ -442,7 +456,8 @@
       
       th, td {
         border: 1px solid black;
-        padding-left: 10px;padding-right: 10px;
+        padding-left: 3px;
+        padding-right: 3px;
       }
 
       th {font-size: large;}
