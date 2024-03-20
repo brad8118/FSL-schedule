@@ -12,6 +12,10 @@
     <script type="text/javascript">
       //fetch data from the spreadsheet or load from mock file
       $(document).ready(function(){
+        $('.pageControls').hide()
+        // fetchDataFromSheet();
+        // return false
+
         if (typeof getTestRequest_PracticeSchedule == 'undefined' ||
             typeof getTestRequest == 'undefined') { // looks for function in the test file loaded above 
           $('.pageControls').hide()
@@ -187,8 +191,6 @@
 
           //OP5 is split up into 4 sections, OP5A1, OP5A2, OP5B1, OP5B2
           if(g.fieldNum == "OP5"){
-          
-
             for(op5_name of ['OP5A1','OP5A2', 'OP5B1', 'OP5B2']){
               let OP5XX = JSON.parse(JSON.stringify(g)); 
               OP5XX.fieldNum = op5_name;
@@ -303,9 +305,10 @@
       // 7:05-8:35pm	Avengers		Blaze	Galaxy	Thunder	Reign	Warriors	Flash	Phoenix	Jaguars		
 
       function convertSpreadsheetToPracticeTime(data){
-        data = data.splice(2,14) //remove the 1st 2 rows and everything after the last 
-        data.splice(10,2)  // blank above thurs & remove thursr
-        data.splice(6,2)  // blank above thurs & remove thurs
+        data = data.splice(2,18) //remove the 1st 2 rows and everything after the last 
+        data.splice(14,2)  // blank above Frid & remove Frid
+        data.splice(10,2)  // blank above thurs & remove thurs
+        data.splice(6,2)  // blank above wed & remove wed
         data.splice(2,2)  // blank above tues & remove tues
         
         //trim each row, anthing after 12 is gone
@@ -322,7 +325,8 @@
             "Monday":[result.shift(), result.shift()],
             "Tuesday":[result.shift(), result.shift()],
             "Wednesday":[result.shift(), result.shift()],
-            "Thrusday":[result.shift(), result.shift()]
+            "Thrusday":[result.shift(), result.shift()],
+            "Friday":[result.shift(), result.shift()]
         }
 
         return groupedByDay

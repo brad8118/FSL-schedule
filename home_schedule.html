@@ -198,10 +198,11 @@
       }
 
       function buildGameTable(gamesByDate, cameraSchedule){
-        // console.log("gamesByDate", gamesByDate)
+        console.log("gamesByDate", gamesByDate)
         // console.log(cameraSchedule)
         //already grouped by date, now order by time  
         gamesByDate.sort(function (a, b) {  
+          console.log(a.matchNum, b.matchNum, a.time, b.time, new Date('1970/01/01 ' + a.time).getTime(), new Date('1970/01/01 ' + b.time).getTime(), new Date('1970/01/01 ' + a.time).getTime() - new Date('1970/01/01 ' + b.time).getTime())
           return new Date('1970/01/01 ' + a.time).getTime() - new Date('1970/01/01 ' + b.time).getTime();
         });
 
@@ -224,7 +225,7 @@
         if("" in gamesGroupedByTime){
            var notScheduledGames = "";
            gamesGroupedByTime[""].forEach( game => {
-               notScheduledGames += `<label>(#${game.matchNum}) ${game.freeholdTeam}, </label>`
+               notScheduledGames += `<label>(${game.leagueType} #${game.matchNum}) ${game.freeholdTeam}, </label>`
              });
           delete gamesGroupedByTime[""];
           groupByDate.append('<div class="gamesNotScheduled"><b>Games Not Scheduled yet:</b> ' + notScheduledGames + "<div/>");          
