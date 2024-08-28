@@ -30,8 +30,10 @@
 
     <script type="text/javascript">
      
-      // const TIME_FIELD_NAMES = ['Time', 'OP4A', 'OP4B', 'OP4C', 'OP4D', 'OP6A', 'OP6B', 'OP6C', 'OP6D', 'OP5A', 'OP5B', 'OP3A', 'OP3B'];
-      const TIME_FIELD_NAMES = ['Time', 'OP4A', 'OP4B', 'OP4C', 'OP4D', 'OP6A', 'OP6B', 'OP6C', 'OP6D', 'OP5A1','OP5A2', 'OP5B1', 'OP5B2', 'MJT1A','MJT1B', 'MJT2A', 'MJT2B'];
+     
+     //This needs to match the order in the google sheet
+      // const TIME_FIELD_NAMES = ['Time', 'OP4A', 'OP4B', 'OP4C', 'OP4D', 'OP6A', 'OP6B', 'OP6C', 'OP6D', 'OP5A1','OP5A2', 'OP5B1', 'OP5B2', 'OP3A', 'OP3B', 'MJT1A','MJT1B', 'MJT2A', 'MJT2B'];
+      const TIME_FIELD_NAMES = ['Time', 'OP4A', 'OP4B', 'OP4C', 'OP4D', 'OP6A', 'OP6B', 'OP6C', 'OP6D', 'OP5A1','OP5A2', 'OP5B1', 'OP5B2'];
 
       function populateTableFromMockData(){
         var games = getTestRequest();
@@ -311,7 +313,7 @@
         data.splice(6,2)  // blank above wed & remove wed
         data.splice(2,2)  // blank above tues & remove tues
         
-        //trim each row, anthing after 12 is gone
+        //trim each row
         for(r of data){
             r.splice(TIME_FIELD_NAMES.length);
         }
