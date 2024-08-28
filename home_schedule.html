@@ -27,12 +27,12 @@
       function populateTableFromMockData(){
         var response = getTestRequest();
         console.log(response);
-        populateTableWithGames(response.values,[]);
+        populateTableWithGames(response.values,[],[]);
       }
 
       function fetchDataOnLoad(){
-        $.when(getAjax_fetchGamesFromSheet(), getAjax_fetchCameraFromSheet()).done(function(games, camera){         
-          populateTableWithGames(games[0].values, camera[0].values);
+        $.when(getAjax_fetchGamesFromSheet(), getAjax_fetchCameraFromSheet(), getAjax_fetchDedicatedCamerasFromSheet()).done(function(games, camera, dedicatedCameras){      
+          populateTableWithGames(games[0].values, camera[0].values, dedicatedCameras[0].values) ;
         });   
       }
 
@@ -61,6 +61,25 @@
         let apiKey = "AIzaSyA46O2IahxdN4TVVhEwg5VWGx73aoZ2edk";
 
         let range = "camera";
+        let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
+        
+        return $.ajax({
+          type: "GET",
+          url: url,
+          cache: false,
+          data: "",
+          success: function(response) {
+            console.log(response)
+          }
+        });
+      }
+
+      function getAjax_fetchDedicatedCamerasFromSheet() {
+        // register for camera
+        let spreadsheetId="1kDDCR00vmKfweClc4zgR5f761yoIoa-9q5Uu1da2iSk"        
+        let apiKey = "AIzaSyA46O2IahxdN4TVVhEwg5VWGx73aoZ2edk";
+
+        let range = "DedicatedCameras";
         let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
         
         return $.ajax({
@@ -147,7 +166,7 @@
         return cameraScheduled
       }
 
-      function populateTableWithGames(games, camera){
+      function populateTableWithGames(games, camera, dedicatedCameras){
         // let cameraSchedule = convertCameraScheduleResponse(camera);
         let cameraSchedule = convert2DArrayToJson(camera);
         var converted = convert2DArrayToJson(games);
@@ -170,7 +189,7 @@
         
         $('#testTbl').html(""); // clear out existing
         for (var key in gamesGroupedByDate){
-          buildGameTable(gamesGroupedByDate[key], cameraSchedule);
+          buildGameTable(gamesGroupedByDate[key], cameraSchedule, dedicatedCameras);
         }
       }
 
@@ -197,7 +216,7 @@
         return result
       }
 
-      function buildGameTable(gamesByDate, cameraSchedule){
+      function buildGameTable(gamesByDate, cameraSchedule, dedicatedCameras){
         console.log("gamesByDate", gamesByDate)
         // console.log(cameraSchedule)
         //already grouped by date, now order by time  
@@ -253,7 +272,7 @@
           head_row.append(`<th>${f}</th>`);
         }
         
-        const cameraList = ['NONE', 'VEO1', 'VEO2', 'VEO3', 'TRACE1', 'TRACE2'];
+        const cameraList = ['NONE', 'VEO1', 'VEO2', 'VEO3', 'VEO4', 'VEO5'];
 
         var index = -1;
         $.each(gamesGroupedByTime, function(time, grouped) {
@@ -273,8 +292,17 @@
                 gamesStr += `<span class="${classGamesAtSameTime}">${g.freeholdTeam}(${g.year})</span>`; 
                 classGamesAtSameTime = "sameTimeSameField";
               }
+              
 
+              // get the camera thats scheduled, if one isn't scheduled check if there's a dedicated camera
               let camera = getCamera(cameraSchedule, grouped[0].time, grouped[0].date, field);
+              if(camera == ""){
+                console.log("teamName ", gamesOnField[0].freeholdTeam)
+                var dedicatedCamera = dedicatedCameras.find(c => c[0] === gamesOnField[0].freeholdTeam);
+                if(dedicatedCamera){
+                  camera = dedicatedCamera[1].toUpperCase();
+                }
+              }
 
               var dropdown = $('<select onchange="cameraChanged(this)" />');
               for(c of cameraList) {
@@ -363,7 +391,7 @@
        * This is fired when a dropdown changes values
        **/
       function cameraChanged(dropdown){
-        $(dropdown).parent().removeClass(`cameraSet VEO1 VEO2 VEO3 TRACE1 TRACE2`);
+        $(dropdown).parent().removeClass(`cameraSet VEO1 VEO2 VEO3 VEO4 VEO5 VEO6 VEO7 VEO8 VEO9`);
 
         if(dropdown.value != "NONE")
           $(dropdown).parent().addClass(`cameraSet ${dropdown.value}`);
@@ -443,17 +471,20 @@
       .VEO4{
         background-color: rgb(204, 152, 216);
       }
-      .TRACE1{
+      .VEO5{
         background-color: rgb(136, 230, 206);
       }
-      .TRACE2{
+      .VEO6{
         background-color: rgb(207, 206, 107);
       }
-      .TRACE3{
-        background-color: rgb(200, 136, 243);
+      .VEO7{
+        background-color: rgb(217, 171, 171);
       }
-      .TRACE4{
-        background-color: rgb(238, 171, 132);
+      .VEO8{
+        background-color: rgb(244, 217, 208);
+      }
+      .VEO9{
+        background-color: rgb(208, 184, 168);
       }
 
       .cameraKey{        
@@ -484,7 +515,7 @@
         <!-- <div id="btnSaveCamera" onClick="saveCameraSettings()">Save Camera Settings</div>  -->
         <div>
           <br />
-          <span class="VEO1 cameraKey">VEO1</span><span class="VEO2 cameraKey">VEO2</span><span class="VEO3 cameraKey">VEO3</span><span class="VEO4 cameraKey">VEO4</span><span class="TRACE1 cameraKey">TRACE1</span><span class="TRACE2 cameraKey">TRACE2</span><span class="TRACE3 cameraKey">TRACE3</span><span class="TRACE4 cameraKey">TRACE4</span>
+          <span class="VEO1 cameraKey">VEO1</span><span class="VEO2 cameraKey">VEO2</span><span class="VEO3 cameraKey">VEO3</span><span class="VEO4 cameraKey">VEO4</span><span class="VEO5 cameraKey">VEO5</span><span class="VEO6 cameraKey">VEO6</span><span class="VEO7 cameraKey">VEO7</span><span class="VEO8 cameraKey">VEO8</span><span class="VEO9 cameraKey">VEO9</span>
           <br /> <br /> If your team hasn't registered yet for cameras please do -> <a href="https://sites.google.com/view/fsl-coaches-corner/camera">Camera Page</a>
         </div>
       </div>
