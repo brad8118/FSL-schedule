@@ -180,7 +180,11 @@
           });
         }
 
-        const homeGames = converted.filter(v => v.homeGame === "HOME");
+        let homeGames = converted.filter(v => v.homeGame === "HOME");
+        homeGames.forEach(g => {
+          // force to 9/17/2016
+          g.date = new Date(g.date).toLocaleDateString("en-US");
+        }) ;
         homeGames.sort((a, b) => (new Date(a.date) - new Date(b.date) ))
         // console.log("HOME GAMES", homeGames)
 
@@ -192,6 +196,8 @@
           buildGameTable(gamesGroupedByDate[key], cameraSchedule, dedicatedCameras);
         }
       }
+
+      
 
       function groupBy(data, groupByAttribute){
           var groupedBy = data.reduce(function (obj, item) {
