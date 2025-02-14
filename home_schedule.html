@@ -38,10 +38,17 @@
 
       
       function getAjax_fetchGamesFromSheet() {
-        let spreadsheetId="1peqZ_mflm9mLBVnsDzMsSDGLTq1mmpy4Qc0cpKVVUkc"
+        // let spreadsheetId="1peqZ_mflm9mLBVnsDzMsSDGLTq1mmpy4Qc0cpKVVUkc"        
+        let spreadsheetId="1W6564quxDmCBcgst1fCNtjo9MAxTgUB2ITRxtHR0QMU" //WORKSPACE
+
         let range = "league_schedule";
         let apiKey = "AIzaSyBvV43w6Zu3mpvKhTbn-Flh5jlc-7uzL5Y";
+        // let apiKey = "AIzaSyBn6iE-V-EPhqfO2vxljicpAs6Eb3EGsYQ"; //WORKSPACE
+
+        
         let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
+        // let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`;
+
         
         return $.ajax({
           type: "GET",
@@ -49,6 +56,7 @@
           cache: false,
           data: "",
           success: function(response) {
+            console.log("getAjax_fetchGamesFromSheet")
             console.log(response)
             // populateTableWithGames(response.values);
           }
@@ -94,7 +102,8 @@
       }
 
       function saveCameraToSheet(cameraSchedule) {
-        let spreadsheetId="1peqZ_mflm9mLBVnsDzMsSDGLTq1mmpy4Qc0cpKVVUkc"
+        // let spreadsheetId="1peqZ_mflm9mLBVnsDzMsSDGLTq1mmpy4Qc0cpKVVUkc"s
+        let spreadsheetId="1W6564quxDmCBcgst1fCNtjo9MAxTgUB2ITRxtHR0QMU" //WORKSPACE
         let range = "camera!A2";
         let apiKey = "4ff406e604c011d4499a8ce1f874d7ebc0b3e2f9";
         // let apiKey = "AIzaSyBvV43w6Zu3mpvKhTbn-Flh5jlc-7uzL5Y"; // key1
