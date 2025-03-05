@@ -44,8 +44,8 @@
       }
 
       function fetchDataFromSheet(){
-        $.when(GetAjax_PracticesFromSheet(), getAjax_GamesFromSheet()).done(function(practices, games){         
-          createTables(practices[0].values, games[0].values);
+        $.when(GetAjax_PracticesFromSheet_RowPerDay(), GetAjax_PracticesFromSheet(), getAjax_GamesFromSheet()).done(function(practiceByRows, practices, games){         
+          createTables(practiceByRows[0].values, practices[0].values, games[0].values);
         });   
       }
       
@@ -53,6 +53,25 @@
         let spreadsheetId="1W6564quxDmCBcgst1fCNtjo9MAxTgUB2ITRxtHR0QMU" //WORKSPACE
         // let spreadsheetId="1peqZ_mflm9mLBVnsDzMsSDGLTq1mmpy4Qc0cpKVVUkc"
         let range = "practice_schedule";
+        let apiKey = "AIzaSyBvV43w6Zu3mpvKhTbn-Flh5jlc-7uzL5Y";
+        let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
+        
+        return $.ajax({
+          type: "GET",
+          url: url,
+          cache: false,
+          data: "",
+          success: function(response) {
+            // console.log(response)
+            // createTables(response.values);
+          }
+        });
+      }
+
+      function GetAjax_PracticesFromSheet_RowPerDay() {
+        let spreadsheetId="1W6564quxDmCBcgst1fCNtjo9MAxTgUB2ITRxtHR0QMU" //WORKSPACE
+        // let spreadsheetId="1peqZ_mflm9mLBVnsDzMsSDGLTq1mmpy4Qc0cpKVVUkc"
+        let range = "practice_schedule_by_row";
         let apiKey = "AIzaSyBvV43w6Zu3mpvKhTbn-Flh5jlc-7uzL5Y";
         let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
         
@@ -86,26 +105,82 @@
         });
       }
 
-      function createTables(practice_response, games_response){
-        var practicesGroupedByDate = convertSpreadsheetToPracticeTime(practice_response);
+      function getDateWithOutTime (date){
+        let d = new Date(date).toLocaleString().split(',')[0];
+        console.log("Trimmed Date", d)
+        return d;
+      }
+
+      function createTables(practiceByRows_response, practice_response, games_response){
+
         var games = convert2DArrayToJson(games_response);
         games = games.filter(v => v.homeGame === "HOME");
-
-        // console.log("HOME GAMES", games)
-        // console.log("practicesGroupedByDate", practicesGroupedByDate);
-        
+       
         $('#testTbl').html(""); // clear out existing
 
+        // ------------USED for Generating by Calendar view ------------
+        var practicesGroupedByDate = convertSpreadsheetToPracticeTime(practice_response);
         for(monday of getPreviousMondayAndNext()){
-          practicesGroupedByDayOfWeek = {};
+          let practicesGroupedByDayOfWeek = {};
           let dayInc = 0;
           for([day, practices] of Object.entries(practicesGroupedByDate)){
             var d = new Date(monday);
             d.setDate(d.getDate() + dayInc++);
             practicesGroupedByDayOfWeek[d] = practices;
           }
-
           createHtmlTable(practicesGroupedByDayOfWeek, games, monday);
+        }
+        // ------END---USED for Generating by Calendar view ------END---
+
+
+        // kinda backwards... Since the orginial was based of 2 week intervals from the "practice_schedule" tab
+        // I just kept the same format when generating the tables in the next function.
+        // might want to just rewrite it so everything is grouped by days?? 
+        // This pulls the rows from practice_schedule_by_row
+        var practicesGroupedByDate_by_row = convert2DArrayToJson(practiceByRows_response);
+        practicesGroupedByDate_by_row = practicesGroupedByDate_by_row.filter(p => p.status.toLowerCase() == "scheduled");
+
+        for(monday of getPreviousMondayAndNext()){
+          let practicesGroupedByDate_byRow = {};
+          let datesThisWeek = []
+          let currentDate = new Date(monday);          
+
+          //monday 0 -> sunday 6
+          for (let i = 0; i <= 4; i++) {
+            // let practicesDuringWeek = practicesGroupedByDate_by_row.filter(p => monday <= new Date(p.date) && p.date <= sunday);
+
+            //should return only 2 practices per day max?? 
+            let dateOnly = getDateWithOutTime(currentDate)
+            let practicesOnDate = practicesGroupedByDate_by_row.filter(p => getDateWithOutTime(p.date) == dateOnly);
+            let practicesGroupedByTime = Object.groupBy(practicesOnDate, ({ time }) => time);
+            
+            let dayOfWeek = getDayOfWeekFromDay(dateOnly);
+            let teamsOnWhichFieldAtWhatTime = []
+            // Loop through each practice and get the field its on. 
+            for(const [key, value] of Object.entries(practicesGroupedByTime) ){
+              let teamsOnField = {}
+              
+              for(fieldName of TIME_FIELD_NAMES){                
+                let practiceOnField = value.filter(p => p.fieldNum == fieldName);
+                if(practiceOnField.length != 0){
+                  teamsOnField[fieldName] = practiceOnField[0].team;
+                }
+                else{
+                  teamsOnField[fieldName] = "";
+                }                
+              }
+              teamsOnField["Time"] = key;
+              teamsOnWhichFieldAtWhatTime.push(teamsOnField);
+            }
+
+            practicesGroupedByDate_byRow[currentDate] = teamsOnWhichFieldAtWhatTime;
+            console.log("practicesOnDate", practicesOnDate)           ;
+            datesThisWeek.push(new Date(currentDate)); // Push a copy of the current date
+            currentDate.setDate(currentDate.getDate() + 1); // Increment to the next day
+          }
+
+          createHtmlTable(practicesGroupedByDate_byRow, games, monday);
+        
         }
       }
 
@@ -215,6 +290,12 @@
         }
 
         return reserveOtherSideOfField;
+      }
+      
+      function getDayOfWeekFromDay(d){
+        const dayOfWeekLookup = ["Sunday",  "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",  "Saturday"];
+        let dayOfWeek = dayOfWeekLookup[new Date(d).getDay()]
+        return dayOfWeek;
       }
 
       function createHtmlTable(practicesGroupedByDate, games, mondayDate){
@@ -335,6 +416,36 @@
 
         return groupedByDay
       }
+
+      
+
+      // function convertSpreadsheetToPracticeTime_rowByRow(data){
+      //   data = data.splice(2,18) //remove the 1st 2 rows and everything after the last 
+      //   data.splice(14,2)  // blank above Frid & remove Frid
+      //   data.splice(10,2)  // blank above thurs & remove thurs
+      //   data.splice(6,2)  // blank above wed & remove wed
+      //   data.splice(2,2)  // blank above tues & remove tues
+        
+      //   //trim each row
+      //   for(r of data){
+      //       r.splice(TIME_FIELD_NAMES.length);
+      //   }
+
+      //   let result = data.map(data =>
+      //       Object.assign({}, ...data.map((x, i) => ({ [TIME_FIELD_NAMES[i]]: x })))
+      //   );
+      //   console.log("convertSpreadsheetToPracticeTime", result);
+
+      //   var groupedByDay = {
+      //       "Monday":[result.shift(), result.shift()],
+      //       "Tuesday":[result.shift(), result.shift()],
+      //       "Wednesday":[result.shift(), result.shift()],
+      //       "Thrusday":[result.shift(), result.shift()],
+      //       "Friday":[result.shift(), result.shift()]
+      //   }
+
+      //   return groupedByDay
+      // }
 
       function buildGameTable(gamesByDate){
         // console.log("gamesByDate", gamesByDate)
