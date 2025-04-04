@@ -32,8 +32,13 @@
      
      
      //This needs to match the order in the google sheet
+      const TIME_FIELD_NAMES = ['Time', 'OP4A', 'OP4B', 'OP4C', 'OP4D', 'OP6A', 'OP6B', 'OP6C', 'OP6D', 'OP5A1','OP5A2', 'OP5B1', 'OP5B2', 'OP3A', 'OP3B', 'OP3C', 'OP3D', 'MJT1A','MJT1B','MJT2A', 'MJT2B', 'WFS1A', 'WFS1B', 'WFS2A', 'WFS2B', 'WFS3A', 'WFS3B'];
+      const TIME_FIELD_NAMES_OP = ['Time', 'OP4A', 'OP4B', 'OP4C', 'OP4D', 'OP6A', 'OP6B', 'OP6C', 'OP6D', 'OP5A1','OP5A2', 'OP5B1', 'OP5B2', 'OP3A', 'OP3B', 'OP3C', 'OP3D'];
+      const TIME_FIELD_NAMES_WF_MJT = ['Time','MJT1A','MJT1B','MJT2A', 'MJT2B', 'WFS1A', 'WFS1B', 'WFS2A', 'WFS2B', 'WFS3A', 'WFS3B'];
+      
       // const TIME_FIELD_NAMES = ['Time', 'OP4A', 'OP4B', 'OP4C', 'OP4D', 'OP6A', 'OP6B', 'OP6C', 'OP6D', 'OP5A1','OP5A2', 'OP5B1', 'OP5B2', 'OP3A', 'OP3B', 'MJT1A','MJT1B', 'MJT2A', 'MJT2B'];
-      const TIME_FIELD_NAMES = ['Time', 'OP4A', 'OP4B', 'OP4C', 'OP4D', 'OP6A', 'OP6B', 'OP6C', 'OP6D', 'OP5A1','OP5A2', 'OP5B1', 'OP5B2'];
+      // const TIME_FIELD_NAMES = ['Time', 'OP4A', 'OP4B', 'OP4C', 'OP4D', 'OP6A', 'OP6B', 'OP6C', 'OP6D', 'OP5A1','OP5A2', 'OP5B1', 'OP5B2'];
+      
 
       function populateTableFromMockData(){
         var games = getTestRequest();
@@ -128,7 +133,7 @@
             d.setDate(d.getDate() + dayInc++);
             practicesGroupedByDayOfWeek[d] = practices;
           }
-          createHtmlTable(practicesGroupedByDayOfWeek, games, monday);
+          // createHtmlTable(practicesGroupedByDayOfWeek, games, monday);
         }
         // ------END---USED for Generating by Calendar view ------END---
 
@@ -179,7 +184,9 @@
             currentDate.setDate(currentDate.getDate() + 1); // Increment to the next day
           }
 
-          createHtmlTable(practicesGroupedByDate_byRow, games, monday);
+          // createHtmlTable(practicesGroupedByDate_byRow, games, monday, TIME_FIELD_NAMES);
+          createHtmlTable(practicesGroupedByDate_byRow, games, monday, TIME_FIELD_NAMES_OP);
+          createHtmlTable(practicesGroupedByDate_byRow, games, monday, TIME_FIELD_NAMES_WF_MJT);
         
         }
       }
@@ -298,16 +305,17 @@
         return dayOfWeek;
       }
 
-      function createHtmlTable(practicesGroupedByDate, games, mondayDate){
+      function createHtmlTable(practicesGroupedByDate, games, mondayDate, fieldsToDisplay){
         const dayOfWeekLookup = ["Sunday",  "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",  "Saturday"];
         var table = $('<table></table>').addClass('tblWeeklySchedule');
-
-        row = $(`<tr class="tblHeader"><td colspan="${TIME_FIELD_NAMES.length}">Game & Practices at Opatut Park for the week of Monday, ${new Date(mondayDate).toLocaleString().split(',')[0]}</td></tr>`); // 
+        
+        let parkName = fieldsToDisplay.includes('OP4A') ? "Opatut Park" : "West Freehold & MJT" ;
+        row = $(`<tr class="tblHeader"><td colspan="${fieldsToDisplay.length}">Practices at ${parkName} for the week of Monday, ${new Date(mondayDate).toLocaleString().split(',')[0]}</td></tr>`); // 
         table.append(row);
 
         row = $('<tr></tr>');
         // order the table by field names
-        for(field of TIME_FIELD_NAMES){
+        for(field of fieldsToDisplay){
             var td = $(`<th>${field}</th>`)
             row.append(td);
         }
@@ -317,7 +325,7 @@
         for([day, practices] of Object.entries(practicesGroupedByDate)){
             let dayOfWeek = dayOfWeekLookup[new Date(day).getDay()]
             let dayStr = new Date(day).toLocaleString().split(',')[0];          
-            row = $(`<tr class="groupedByDate"><td colspan="${TIME_FIELD_NAMES.length}">${dayOfWeek}, ${dayStr}</td></tr>`); // 
+            row = $(`<tr class="groupedByDate"><td colspan="${fieldsToDisplay.length}">${dayOfWeek}, ${dayStr}</td></tr>`); // 
             table.append(row);
 
             //generally should only be 2 practice times per night, 5:30->7 & 7->830
@@ -326,16 +334,18 @@
                 gamesDuringPractice = getGamesDuringPractice(games, dayStr, practice.Time)
 
                 // order the table by field names
-                for(field of TIME_FIELD_NAMES){
+                for(field of fieldsToDisplay){
                   gameOnField = gamesDuringPractice.find(g=> g.fieldNum == field);
                   if(gameOnField){
                     let title = `${gameOnField.fieldNum} - ${gameOnField.freeholdTeam} vs ${gameOnField.opponent} @ ${gameOnField.date} : ${gameOnField.time} Game# ${gameOnField.matchNum}`
                     var td = $(`<td class="gameDuring" title="${title}">${practice[field]}<br /><div>GAME ${gameOnField.freeholdTeam}</div></td>`)
                     row.append(td);
                   }
-                  else{
+                  else{  
                     let goalieClass = practice[field].toUpperCase() == "GOALIE" ? "goalie" : "";
-                    var td = $(`<td class="${goalieClass}">${practice[field]}</td>`)
+                    let freeClass = practice[field].toUpperCase() == "" ? "openPractice" : ""; 
+                    let booked = practice[field].toUpperCase() == "NA" ? "practiceBlocked" : "";
+                    var td = $(`<td class="${goalieClass} ${freeClass} ${booked}" >${practice[field]}</td>`)
                     row.append(td);
                   }
                 }
@@ -417,35 +427,7 @@
         return groupedByDay
       }
 
-      
-
-      // function convertSpreadsheetToPracticeTime_rowByRow(data){
-      //   data = data.splice(2,18) //remove the 1st 2 rows and everything after the last 
-      //   data.splice(14,2)  // blank above Frid & remove Frid
-      //   data.splice(10,2)  // blank above thurs & remove thurs
-      //   data.splice(6,2)  // blank above wed & remove wed
-      //   data.splice(2,2)  // blank above tues & remove tues
-        
-      //   //trim each row
-      //   for(r of data){
-      //       r.splice(TIME_FIELD_NAMES.length);
-      //   }
-
-      //   let result = data.map(data =>
-      //       Object.assign({}, ...data.map((x, i) => ({ [TIME_FIELD_NAMES[i]]: x })))
-      //   );
-      //   console.log("convertSpreadsheetToPracticeTime", result);
-
-      //   var groupedByDay = {
-      //       "Monday":[result.shift(), result.shift()],
-      //       "Tuesday":[result.shift(), result.shift()],
-      //       "Wednesday":[result.shift(), result.shift()],
-      //       "Thrusday":[result.shift(), result.shift()],
-      //       "Friday":[result.shift(), result.shift()]
-      //   }
-
-      //   return groupedByDay
-      // }
+    
 
       function buildGameTable(gamesByDate){
         // console.log("gamesByDate", gamesByDate)
@@ -601,6 +583,14 @@
 
       .goalie{
         background-color: #dbeaff;
+      }
+
+      .openPractice{
+        background-color: #c8dbf7;
+      } 
+
+      .practiceBlocked{
+        background-color: #f3dad0;
       }
     </style>
     
