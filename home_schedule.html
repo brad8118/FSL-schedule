@@ -86,7 +86,7 @@
 
       function getAjax_fetchDedicatedCamerasFromSheet() {
         // register for camera
-        let spreadsheetId="1kDDCR00vmKfweClc4zgR5f761yoIoa-9q5Uu1da2iSk"        
+        let spreadsheetId="1cFZTmUQS9E8yCpPR7NiSEnRy3QPGTwziw4I83vY52xA"        
         let apiKey = "AIzaSyA46O2IahxdN4TVVhEwg5VWGx73aoZ2edk";
 
         let range = "DedicatedCameras";
@@ -122,7 +122,7 @@
           cache: false,
           data : { 'values':[cameraSchedule],"majorDimension":"ROWS"},
           success: function(response) {
-            console.log(response)
+            console.log("dedicated Cameras", response)
             // populateTableWithGames(response.values);
           }
         });
@@ -315,7 +315,7 @@
               let camera = getCamera(cameraSchedule, grouped[0].time, grouped[0].date, field);
               if(camera == ""){
                 console.log("teamName ", gamesOnField[0].freeholdTeam)
-                var dedicatedCamera = dedicatedCameras.find(c => c[0] === gamesOnField[0].freeholdTeam);
+                var dedicatedCamera = dedicatedCameras.find(c => gamesOnField[0].freeholdTeam.includes(c[0]));
                 if(dedicatedCamera){
                   camera = dedicatedCamera[1].toUpperCase();
                 }
