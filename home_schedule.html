@@ -326,11 +326,19 @@
                   $('<option />', {value: c, text: c}).appendTo(dropdown);
               }
 
+              let classGameHolder = "";
+              if(g.matchNum.includes("HOLDER")){
+                classGameHolder = "HOLDER"
+              }
+              else if(g.matchNum.includes("CHANGE_REQUEST")){
+                classGameHolder = "CHANGE_REQUEST"
+              }
+
               let id =`${grouped[0].date}__${grouped[0].time}__${field}`;
               id = id.replaceAll('/', "-")
               id = id.replaceAll(' ', "")
-              id = id.replaceAll(':', "")
-              var td = $(`<td id="${id}" class="${camera}" title="vs ${g.opponent} Game# (${g.matchNum})  League (${g.leagueType}) ${g.year}"> </td>`);
+              id = id.replaceAll(':', "")            
+              var td = $(`<td id="${id}" class="${camera} ${classGameHolder}" title="vs ${g.opponent} Game# (${g.matchNum})  League (${g.leagueType}) ${g.year}"> </td>`);
               if(cameraMode){
                 td.append(dropdown);
                 td.append("<br />");
@@ -474,6 +482,14 @@
       .sameTimeSameField{
         background-color: red;
         padding-left: 10px;
+      }
+
+      .HOLDER{
+        border: 6px solid yellow !important;
+      }
+
+      .CHANGE_REQUEST{
+        border: 6px solid red !important;
       }
 
       .VEO1{
