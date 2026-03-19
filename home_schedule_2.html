@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+    <script src="mock_league_schedule.js"></script>
+
+    <script type="text/javascript">
+      const dayOfWeekLookup = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const WEEKEND_JM_FIELDS = ["JM1", "JM2", "JM3", "JM4", "JM5", "JM6"];
+
+      $(document).ready(function () {
+        if (typeof getTestRequest == "undefined") {
+          $("#btnFetchFromMock").hide();
+          fetchGamesFromSheet();
+        }
+      });
+
+      function populateTableFromMockData() {
+        var response = getTestRequest();
+        populateTableWithGames(response.values);
+      }
+
+      function fetchGamesFromSheet() {
+        let spreadsheetId = "1W6564quxDmCBcgst1fCNtjo9MAxTgUB2ITRxtHR0QMU";
+        let range = "league_schedule";
+        let apiKey = "AIzaSyBvV43w6Zu3mpvKhTbn-Flh5jlc-7uzL5Y";
+        let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
+
+        return $.ajax({
+          type: "GET",
+          url: url,
+          cache: false,
+          data: "",
+          success: function (response) {
+            populateTableWithGames(response.values);
+          },
+        });
+      }
+
+      function convert2DArrayToJson(json) {
+        let data = json;
+        let keys = data.shift();
+        return data.map((row) => Object.assign({}, ...row.map((x, i) => ({ [keys[i]]: x }))));
+      }
+
+      function groupBy(data, groupByAttribute) {
+        return data.reduce(function (obj, item) {
+          obj[item[groupByAttribute]] = obj[item[groupByAttribute]] || [];
+          obj[item[groupByAttribute]].push(item);
+          return obj;
+        }, {});
+      }
+
+      function showOldGamesCkbChange() {
+        if (typeof getTestRequest == "undefined") {
+          fetchGamesFromSheet();
+        } else {
+          populateTableFromMockData();
+        }
+      }
+
+      function populateTableWithGames(games) {
+        var converted = convert2DArrayToJson(games);
+
+        if (!$("#ckbShowPastGames").is(":checked")) {
+          converted = converted.filter(function (v) {
+            let now = new Date();
+            now.setHours(0, 0, 0, 0);
+            return new Date(v.date).getTime() >= now.getTime();
+          });
+        }
+
+        let homeGames = converted.filter((v) => v.homeGame === "HOME");
+        homeGames.forEach((g) => {
+          g.date = new Date(g.date).toLocaleDateString("en-US");
+        });
+
+        homeGames.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        var gamesGroupedByDate = groupBy(homeGames, "date");
+
+        $("#testTbl").html("");
+        for (var key in gamesGroupedByDate) {
+          buildGameTableByRules(gamesGroupedByDate[key]);
+        }
+      }
+
+      function buildGameTableByRules(gamesByDate) {
+        if (!gamesByDate || gamesByDate.length === 0) {
+          return;
+        }
+
+        gamesByDate.sort((a, b) => toDateTime(a.date, a.time) - toDateTime(b.date, b.time));
+
+        const dateStr = gamesByDate[0].date;
+        const dateObj = new Date(dateStr);
+        const dayOfWeek = dateObj.getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+        const groupByDate = $("<div/>");
+        const formattedDate = dateObj.toLocaleString().split(",")[0];
+        groupByDate.append(`<div class="groupedByDate">${dayOfWeekLookup[dayOfWeek]}, ${formattedDate}</div>`);
+
+        const scheduledGames = gamesByDate.filter((g) => g.time && g.time.trim() !== "" && g.fieldNum && g.fieldNum.trim() !== "");
+        const unscheduledGames = gamesByDate.filter((g) => !g.time || g.time.trim() === "" || !g.fieldNum || g.fieldNum.trim() === "");
+
+        if (unscheduledGames.length > 0) {
+          const labels = unscheduledGames
+            .map((g) => `(${g.leagueType} #${g.matchNum}) ${g.freeholdTeam}`)
+            .join(", ");
+          groupByDate.append(`<div class="gamesNotScheduled"><b>Games Not Scheduled yet:</b> ${labels}</div>`);
+        }
+
+        if (scheduledGames.length === 0) {
+          groupByDate.append('<div class="emptyDate">No scheduled home games for this day.</div>');
+          $("#testTbl").append(groupByDate);
+          return;
+        }
+
+        const normalizedGames = scheduledGames.map((g) => normalizeGame(g));
+        const fields = getFieldsForDate(normalizedGames, isWeekend);
+        const timeWindow = getTimeWindowForDate(normalizedGames, dateObj, isWeekend);
+        const slots = build15MinuteSlots(timeWindow.start, timeWindow.end);
+
+        const table = $("<table/>");
+        const tableHead = $("<thead/>");
+        const headRow = $("<tr/>");
+        const tableBody = $("<tbody/>");
+
+        headRow.append("<th>Time</th>");
+        fields.forEach((field) => headRow.append(`<th>${field}</th>`));
+        tableHead.append(headRow);
+
+        const gamesByField = {};
+        fields.forEach((f) => {
+          gamesByField[f] = normalizedGames
+            .filter((g) => g.fieldNum.toUpperCase() === f.toUpperCase())
+            .sort((a, b) => a.start - b.start);
+        });
+
+        const coverUntilByField = {};
+        fields.forEach((f) => {
+          coverUntilByField[f] = null;
+        });
+
+        slots.forEach((slotStart) => {
+          const tr = $('<tr class="slotRow"/>');
+          if (slotStart.getMinutes() === 0) {
+            tr.append(`<td class="timeCol" rowspan="4">${formatTime(slotStart)}</td>`);
+          }
+
+          fields.forEach((field) => {
+            if (coverUntilByField[field] && slotStart < coverUntilByField[field]) {
+              return;
+            }
+
+            const startsNow = gamesByField[field].filter((g) => g.start.getTime() === slotStart.getTime());
+
+            if (startsNow.length > 0) {
+              const longestDuration = Math.max(...startsNow.map((g) => g.durationMin));
+              const rowSpan = Math.max(1, Math.ceil(longestDuration / 15));
+
+              const teams = startsNow.map((g) => `${g.freeholdTeam} (${g.year})`).join("<br />");
+              const tooltip = startsNow
+                .map((g) => `vs ${g.opponent} | #${g.matchNum} | ${g.leagueType}`)
+                .join("\n");
+
+              let tdClass = "gameCell";
+              if (startsNow.some((g) => (g.matchNum || "").includes("HOLDER"))) {
+                tdClass += " HOLDER";
+              }
+              if (startsNow.some((g) => (g.matchNum || "").includes("CHANGE_REQUEST"))) {
+                tdClass += " CHANGE_REQUEST";
+              }
+
+              const td = $(`<td class="${tdClass}" rowspan="${rowSpan}" title="${tooltip}">${teams}</td>`);
+              tr.append(td);
+
+              const coverUntil = new Date(slotStart);
+              coverUntil.setMinutes(coverUntil.getMinutes() + rowSpan * 15);
+              coverUntilByField[field] = coverUntil;
+            } else {
+              tr.append('<td class="emptyCell">-</td>');
+            }
+          });
+
+          tableBody.append(tr);
+        });
+
+        table.append(tableHead);
+        table.append(tableBody);
+        groupByDate.append(table);
+        $("#testTbl").append(groupByDate);
+      }
+
+      function normalizeGame(game) {
+        const field = (game.fieldNum || "").toUpperCase().trim();
+        const start = toDateTime(game.date, game.time);
+        const durationMin = getGameDurationMinutes(field);
+        const end = new Date(start);
+        end.setMinutes(end.getMinutes() + durationMin);
+
+        return {
+          ...game,
+          fieldNum: field,
+          start,
+          end,
+          durationMin,
+        };
+      }
+
+      function getGameDurationMinutes(fieldNum) {
+        const f = (fieldNum || "").toUpperCase();
+        if (f === "JM1" || f.startsWith("OP5") || f.startsWith("OP6") || f.startsWith("OP4")) {
+          return 90;
+        }
+        return 75;
+      }
+
+      function getFieldsForDate(games, isWeekend) {
+        const gameFields = [...new Set(games.map((g) => g.fieldNum).filter((f) => f && f !== ""))];
+
+        if (isWeekend) {
+          const extras = gameFields.filter((f) => !WEEKEND_JM_FIELDS.includes(f));
+          return WEEKEND_JM_FIELDS.concat(extras.sort(compareFields));
+        }
+
+        return gameFields.sort(compareFields);
+      }
+
+      function compareFields(a, b) {
+        const rankA = getFieldPrefixRank(a);
+        const rankB = getFieldPrefixRank(b);
+        if (rankA !== rankB) {
+          return rankA - rankB;
+        }
+
+        const parsedA = parseFieldSuffix(a);
+        const parsedB = parseFieldSuffix(b);
+
+        if (parsedA.number !== parsedB.number) {
+          return parsedA.number - parsedB.number;
+        }
+
+        return parsedA.suffix.localeCompare(parsedB.suffix);
+      }
+
+      function getFieldPrefixRank(field) {
+        const upper = (field || "").toUpperCase();
+        if (upper.startsWith("JM")) return 0;
+        if (upper.startsWith("OP")) return 1;
+        if (upper.startsWith("MJT")) return 2;
+        if (upper.startsWith("WFS")) return 3;
+        return 4;
+      }
+
+      function parseFieldSuffix(field) {
+        const upper = (field || "").toUpperCase();
+        const stripped = upper.replace(/^(JM|OP|MJT|WFS)/, "");
+        const match = stripped.match(/^(\d+)(.*)$/);
+        if (!match) {
+          return { number: Number.MAX_SAFE_INTEGER, suffix: stripped };
+        }
+
+        return {
+          number: parseInt(match[1], 10),
+          suffix: match[2] || "",
+        };
+      }
+
+      function getTimeWindowForDate(games, dateObj, isWeekend) {
+        const start = new Date(dateObj);
+        const end = new Date(dateObj);
+
+        if (isWeekend) {
+          start.setHours(8, 0, 0, 0);
+          end.setHours(18, 0, 0, 0);
+        } else {
+          start.setHours(17, 0, 0, 0);
+          end.setHours(22, 0, 0, 0);
+        }
+
+        const earliestGameStart = new Date(Math.min(...games.map((g) => g.start.getTime())));
+        const latestGameEnd = new Date(Math.max(...games.map((g) => g.end.getTime())));
+
+        const expandedStart = floorToHour(earliestGameStart);
+        const expandedEnd = ceilToHour(latestGameEnd);
+
+        if (expandedStart < start) {
+          start.setTime(expandedStart.getTime());
+        }
+
+        if (expandedEnd > end) {
+          end.setTime(expandedEnd.getTime());
+        }
+
+        return { start, end };
+      }
+
+      function build15MinuteSlots(start, end) {
+        const slots = [];
+        const cursor = new Date(start);
+
+        while (cursor < end) {
+          slots.push(new Date(cursor));
+          cursor.setMinutes(cursor.getMinutes() + 15);
+        }
+
+        return slots;
+      }
+
+      function floorToHour(date) {
+        const d = new Date(date);
+        d.setMinutes(0, 0, 0);
+        return d;
+      }
+
+      function ceilToHour(date) {
+        const d = new Date(date);
+        if (d.getMinutes() !== 0 || d.getSeconds() !== 0 || d.getMilliseconds() !== 0) {
+          d.setHours(d.getHours() + 1);
+        }
+        d.setMinutes(0, 0, 0);
+        return d;
+      }
+
+      function toDateTime(dateStr, timeStr) {
+        return new Date(`${dateStr} ${timeStr}`);
+      }
+
+      function formatTime(date) {
+        if (date.getMinutes() !== 0) {
+          return "";
+        }
+        return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      }
+    </script>
+
+    <style>
+      .pageTitle {
+        text-align: center;
+      }
+
+      .pageControls {
+        text-align: center;
+      }
+
+      #messageDiv {
+        text-align: center;
+      }
+
+      .groupedByDate {
+        background-color: #9d9e9f;
+        font-size: larger;
+        font-weight: bold;
+        margin-top: 10px;
+        padding: 5px;
+      }
+
+      .gamesNotScheduled {
+        background-color: #ffcc00;
+        margin-bottom: 4px;
+        padding: 5px;
+      }
+
+      .emptyDate {
+        background-color: #f4f4f4;
+        border: 1px solid #bbb;
+        padding: 8px;
+      }
+
+      table {
+        border-collapse: collapse;
+        text-align: center;
+        margin-bottom: 10px;
+      }
+
+      th,
+      td {
+        border: 1px solid black;
+        padding-top: 2px;
+        padding-bottom: 2px;
+        padding-left: 10px;
+        padding-right: 10px;
+        min-width: 85px;
+        line-height: 1.1;
+      }
+
+      th {
+        font-size: large;
+      }
+
+      .timeCol {
+        font-weight: bold;
+        min-width: 76px;
+        vertical-align: middle;
+      }
+
+      .slotRow {
+        height: 16px;
+      }
+
+      .gameCell {
+        background: #dceffd;
+        vertical-align: top;
+        font-weight: bold;
+        font-size: 0.85rem;
+      }
+
+      .emptyCell {
+        background: #fff;
+      }
+
+      .HOLDER {
+        border: 6px solid yellow !important;
+      }
+
+      .CHANGE_REQUEST {
+        border: 6px solid red !important;
+      }
+    </style>
+  </head>
+
+  <body>
+    <form>
+      <div class="pageTitle">
+        <h1>Freehold Soccer Home Game Schedule (Rules View)</h1>
+      </div>
+      <div class="pageControls">
+        <input id="btnFetchFromSheet" type="button" value="Refresh" onclick="fetchGamesFromSheet();" />
+        <input id="btnFetchFromMock" type="button" value="Load From Test File" onclick="populateTableFromMockData();" />
+        <input type="checkbox" id="ckbShowPastGames" onchange="showOldGamesCkbChange()" />
+        <label for="ckbShowPastGames">Show games in the past</label>
+      </div>
+      <br />
+      <div id="messageDiv">
+        Hover over a game to see details.
+      </div>
+      <br />
+      <div id="testTbl"></div>
+      <br />
+    </form>
+  </body>
+</html>
