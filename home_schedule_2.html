@@ -11,16 +11,22 @@
       $(document).ready(function () {
         if (typeof getTestRequest == "undefined") {
           $("#btnFetchFromMock").hide();
-          fetchGamesFromSheet();
+          fetchDataOnLoad();
         }
       });
 
       function populateTableFromMockData() {
         var response = getTestRequest();
-        populateTableWithGames(response.values);
+        populateTableWithGames(response.values, [], []);
       }
 
-      function fetchGamesFromSheet() {
+      function fetchDataOnLoad() {
+        $.when(getAjax_fetchGamesFromSheet(), getAjax_fetchCameraFromSheet(), getAjax_fetchDedicatedCamerasFromSheet()).done(function (games, camera, dedicatedCameras) {
+          populateTableWithGames(games[0].values, camera[0].values, dedicatedCameras[0].values);
+        });
+      }
+
+      function getAjax_fetchGamesFromSheet() {
         let spreadsheetId = "1W6564quxDmCBcgst1fCNtjo9MAxTgUB2ITRxtHR0QMU";
         let range = "league_schedule";
         let apiKey = "AIzaSyBvV43w6Zu3mpvKhTbn-Flh5jlc-7uzL5Y";
@@ -31,9 +37,34 @@
           url: url,
           cache: false,
           data: "",
-          success: function (response) {
-            populateTableWithGames(response.values);
-          },
+        });
+      }
+
+      function getAjax_fetchCameraFromSheet() {
+        let spreadsheetId = "1cFZTmUQS9E8yCpPR7NiSEnRy3QPGTwziw4I83vY52xA";
+        let apiKey = "AIzaSyA46O2IahxdN4TVVhEwg5VWGx73aoZ2edk";
+        let range = "camera";
+        let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
+
+        return $.ajax({
+          type: "GET",
+          url: url,
+          cache: false,
+          data: "",
+        });
+      }
+
+      function getAjax_fetchDedicatedCamerasFromSheet() {
+        let spreadsheetId = "1cFZTmUQS9E8yCpPR7NiSEnRy3QPGTwziw4I83vY52xA";
+        let apiKey = "AIzaSyA46O2IahxdN4TVVhEwg5VWGx73aoZ2edk";
+        let range = "DedicatedCameras";
+        let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
+
+        return $.ajax({
+          type: "GET",
+          url: url,
+          cache: false,
+          data: "",
         });
       }
 
@@ -53,13 +84,15 @@
 
       function showOldGamesCkbChange() {
         if (typeof getTestRequest == "undefined") {
-          fetchGamesFromSheet();
+          fetchDataOnLoad();
         } else {
           populateTableFromMockData();
         }
       }
 
-      function populateTableWithGames(games) {
+      function populateTableWithGames(games, camera, dedicatedCameras) {
+        let cameraSchedule = camera && camera.length ? convert2DArrayToJson(camera) : [];
+        let dedicatedCameraRows = dedicatedCameras && dedicatedCameras.length ? dedicatedCameras : [];
         var converted = convert2DArrayToJson(games);
 
         if (!$("#ckbShowPastGames").is(":checked")) {
@@ -81,11 +114,11 @@
 
         $("#testTbl").html("");
         for (var key in gamesGroupedByDate) {
-          buildGameTableByRules(gamesGroupedByDate[key]);
+          buildGameTableByRules(gamesGroupedByDate[key], cameraSchedule, dedicatedCameraRows);
         }
       }
 
-      function buildGameTableByRules(gamesByDate) {
+      function buildGameTableByRules(gamesByDate, cameraSchedule, dedicatedCameras) {
         if (!gamesByDate || gamesByDate.length === 0) {
           return;
         }
@@ -128,7 +161,7 @@
         const tableBody = $("<tbody/>");
 
         headRow.append("<th>Time</th>");
-        fields.forEach((field) => headRow.append(`<th>${field}</th>`));
+        fields.forEach((field) => headRow.append(`<th>${getFieldHeaderLabel(field)}</th>`));
         tableHead.append(headRow);
 
         const gamesByField = {};
@@ -144,8 +177,10 @@
         });
 
         slots.forEach((slotStart) => {
-          const tr = $('<tr class="slotRow"/>');
-          if (slotStart.getMinutes() === 0) {
+          const isHourRow = slotStart.getMinutes() === 0;
+          const rowClass = isHourRow ? "slotRow hourRow" : "slotRow quarterRow";
+          const tr = $(`<tr class="${rowClass}"/>`);
+          if (isHourRow) {
             tr.append(`<td class="timeCol" rowspan="4">${formatTime(slotStart)}</td>`);
           }
 
@@ -161,11 +196,27 @@
               const rowSpan = Math.max(1, Math.ceil(longestDuration / 15));
 
               const teams = startsNow.map((g) => `${g.freeholdTeam} (${g.year})`).join("<br />");
-              const tooltip = startsNow
+              let tooltip = startsNow
                 .map((g) => `vs ${g.opponent} | #${g.matchNum} | ${g.leagueType}`)
                 .join("\n");
+              if (startsNow.some((g) => (g.matchNum || "").includes("HOLDER"))) {
+                tooltip += "\nWaiting for game to approved in GotSport";
+              }
+              if (startsNow.some((g) => (g.matchNum || "").includes("CHANGE_REQUEST"))) {
+                tooltip += "\nGame is planned to be moved, waiting approval in GotSport";
+              }
 
               let tdClass = "gameCell";
+              let camera = getCamera(cameraSchedule, startsNow[0].time, startsNow[0].date, field);
+              if (camera === "") {
+                const dedicatedCamera = dedicatedCameras.find((c) => startsNow[0].freeholdTeam.includes(c[0]));
+                if (dedicatedCamera) {
+                  camera = dedicatedCamera[1].toUpperCase();
+                }
+              }
+              if (camera !== "") {
+                tdClass += ` ${camera}`;
+              }
               if (startsNow.some((g) => (g.matchNum || "").includes("HOLDER"))) {
                 tdClass += " HOLDER";
               }
@@ -209,12 +260,60 @@
         };
       }
 
+      function getCamera(cameraSchedule, time, date, field) {
+        let cameraOnField = cameraSchedule.find(function (c) {
+          let gameTime = time.replaceAll(" ", "").toUpperCase();
+          let cameraTime = c.time.replaceAll(" ", "").toUpperCase();
+          let gameField = field.replaceAll(" ", "").toUpperCase();
+          let cameraField = c.field.replaceAll(" ", "").toUpperCase();
+
+          return c.date == date && cameraTime == gameTime && gameField == cameraField;
+        });
+
+        if (cameraOnField) {
+          return cameraOnField.camera.toUpperCase().replaceAll(" ", "");
+        }
+
+        return "";
+      }
+
       function getGameDurationMinutes(fieldNum) {
         const f = (fieldNum || "").toUpperCase();
-        if (f === "JM1" || f.startsWith("OP5") || f.startsWith("OP6") || f.startsWith("OP4")) {
+        if (f === "JM1" || /^OP\d$/.test(f)) {
           return 90;
         }
         return 75;
+      }
+
+      function getFieldHeaderLabel(fieldNum) {
+        const size = getFieldSize(fieldNum);
+        if (size === "") {
+          return fieldNum;
+        }
+
+        return `${fieldNum}<br /><span class="fieldSize">${size}</span>`;
+      }
+
+      function getFieldSize(fieldNum) {
+        const f = (fieldNum || "").toUpperCase();
+
+        if (["JM2", "JM3", "JM4"].includes(f)) {
+          return "7v7";
+        }
+
+        if (["JM5", "JM6"].includes(f)) {
+          return "9v9";
+        }
+        
+        if (["JM5", "JM6", "OP4A", "OP4C", "OP5A", "OP5C", "OP6A", "OP6C"].includes(f)) {
+          return "7v7 / 9v9";
+        }
+
+        if (["JM1", "OP4", "OP5", "OP6"].includes(f)) {
+          return "11v11";
+        }
+
+        return "";
       }
 
       function getFieldsForDate(games, isWeekend) {
@@ -373,6 +472,8 @@
         border-collapse: collapse;
         text-align: center;
         margin-bottom: 10px;
+        table-layout: auto;
+        width: auto;
       }
 
       th,
@@ -380,31 +481,98 @@
         border: 1px solid black;
         padding-top: 2px;
         padding-bottom: 2px;
-        padding-left: 10px;
-        padding-right: 10px;
-        min-width: 85px;
+        padding-left: 6px;
+        padding-right: 6px;
         line-height: 1.1;
+        white-space: nowrap;
       }
 
       th {
         font-size: large;
       }
 
+      .fieldSize {
+        display: block;
+        font-size: 0.7em;
+        font-weight: normal;
+        margin-top: 2px;
+      }
+
       .timeCol {
         font-weight: bold;
-        min-width: 76px;
         vertical-align: middle;
+        padding-left: 8px;
+        padding-right: 8px;
       }
 
       .slotRow {
         height: 16px;
       }
 
+      .hourRow {
+        height: 16px;
+      }
+
+      .hourRow td {
+        border-top-width: 3px;
+      }
+
+      .quarterRow {
+        height: 10px;
+      }
+
+      .quarterRow td {
+        padding-top: 0;
+        padding-bottom: 0;
+        line-height: 1;
+      }
+
       .gameCell {
         background: #dceffd;
-        vertical-align: top;
+        vertical-align: center;
         font-weight: bold;
         font-size: 0.85rem;
+        white-space: normal;
+      }
+
+      .VEO1 {
+        background-color: rgb(0, 217, 255);
+      }
+
+      .VEO2 {
+        background-color: rgb(81, 121, 197);
+      }
+
+      .VEO3 {
+        background-color: rgb(116, 190, 160);
+      }
+
+      .VEO4 {
+        background-color: rgb(204, 152, 216);
+      }
+
+      .VEO5 {
+        background-color: rgb(136, 230, 206);
+      }
+
+      .VEO6 {
+        background-color: rgb(207, 206, 107);
+      }
+
+      .VEO7 {
+        background-color: rgb(217, 171, 171);
+      }
+
+      .VEO8 {
+        background-color: rgb(244, 217, 208);
+      }
+
+      .VEO9 {
+        background-color: rgb(208, 184, 168);
+      }
+
+      .cameraKey {
+        padding: 10px;
       }
 
       .emptyCell {
@@ -418,6 +586,8 @@
       .CHANGE_REQUEST {
         border: 6px solid red !important;
       }
+
+      
     </style>
   </head>
 
@@ -427,7 +597,7 @@
         <h1>Freehold Soccer Home Game Schedule (Rules View)</h1>
       </div>
       <div class="pageControls">
-        <input id="btnFetchFromSheet" type="button" value="Refresh" onclick="fetchGamesFromSheet();" />
+        <input id="btnFetchFromSheet" type="button" value="Refresh" onclick="fetchDataOnLoad();" />
         <input id="btnFetchFromMock" type="button" value="Load From Test File" onclick="populateTableFromMockData();" />
         <input type="checkbox" id="ckbShowPastGames" onchange="showOldGamesCkbChange()" />
         <label for="ckbShowPastGames">Show games in the past</label>
@@ -435,6 +605,11 @@
       <br />
       <div id="messageDiv">
         Hover over a game to see details.
+        <div>
+          <br />
+          <span class="VEO1 cameraKey">VEO1</span><span class="VEO2 cameraKey">VEO2</span><span class="VEO3 cameraKey">VEO3</span><span class="VEO4 cameraKey">VEO4</span><span class="VEO5 cameraKey">VEO5</span><span class="VEO6 cameraKey">VEO6</span><span class="VEO7 cameraKey">VEO7</span><span class="VEO8 cameraKey">VEO8</span><span class="VEO9 cameraKey">VEO9</span>
+          <br /> <br /> If your team hasn't registered yet for cameras please do -> <a href="https://sites.google.com/view/fsl-coaches-corner/camera">Camera Page</a>
+        </div>
       </div>
       <br />
       <div id="testTbl"></div>

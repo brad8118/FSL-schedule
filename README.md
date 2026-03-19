@@ -23,7 +23,11 @@ Displays the league game schedule, focused on home games. The page:
 - For the time, show increaments of 15 minutes
 - When ordering fields, always order them Jackson Mills (FIelds that start with JM), then Opatut (fields that start with OP), Then MJT, then WFS.
 - If a game start before or after the times being displayed, update the table rounds up to the hour before the game and after the game ends, so if a game were to start at 7:45 then the times would start at 7. Similarly if a game ends at 7:15pm the table would end at 8.
-- Games on JM1, OP5, OP6, OP4 are 1hour and 30m while all other games are 1hour 15min. 
+- Game duration rules:
+    - Games on JM1 are 1 hour 30 minutes.
+    - Games on Opatut fields are 1 hour 30 minutes only when the field name is the base field with no letter suffix, such as OP4, OP5, or OP6.
+    - Games on Opatut lettered sub-fields, such as OP6A, OP6C, OP5A, or any field in the format OP#X where X is a letter, are 1 hour 15 minutes.
+    - All other fields are 1 hour 15 minutes.
 - Rules for games that fall on a Saturday or Sunday
     - Time starts at 8am and typically runs until 6pm
     - Show all fields at Jackson Mills (JM1, JM2, JM3, JM4, JM5, JM6)
