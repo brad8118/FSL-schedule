@@ -171,6 +171,11 @@
             .sort((a, b) => a.start - b.start);
         });
 
+        const clustersByField = {};
+        fields.forEach((f) => {
+          clustersByField[f] = getOverlapClusters(gamesByField[f]);
+        });
+
         const coverUntilByField = {};
         fields.forEach((f) => {
           coverUntilByField[f] = null;
@@ -189,42 +194,11 @@
               return;
             }
 
-            const startsNow = gamesByField[field].filter((g) => g.start.getTime() === slotStart.getTime());
+            const cluster = clustersByField[field].find((c) => c.start.getTime() === slotStart.getTime());
 
-            if (startsNow.length > 0) {
-              const longestDuration = Math.max(...startsNow.map((g) => g.durationMin));
-              const rowSpan = Math.max(1, Math.ceil(longestDuration / 15));
-
-              const teams = startsNow.map((g) => `${g.freeholdTeam} (${g.year})`).join("<br />");
-              let tooltip = startsNow
-                .map((g) => `vs ${g.opponent} | #${g.matchNum} | ${g.leagueType}`)
-                .join("\n");
-              if (startsNow.some((g) => (g.matchNum || "").includes("HOLDER"))) {
-                tooltip += "\nWaiting for game to approved in GotSport";
-              }
-              if (startsNow.some((g) => (g.matchNum || "").includes("CHANGE_REQUEST"))) {
-                tooltip += "\nGame is planned to be moved, waiting approval in GotSport";
-              }
-
-              let tdClass = "gameCell";
-              let camera = getCamera(cameraSchedule, startsNow[0].time, startsNow[0].date, field);
-              if (camera === "") {
-                const dedicatedCamera = dedicatedCameras.find((c) => startsNow[0].freeholdTeam.includes(c[0]));
-                if (dedicatedCamera) {
-                  camera = dedicatedCamera[1].toUpperCase();
-                }
-              }
-              if (camera !== "") {
-                tdClass += ` ${camera}`;
-              }
-              if (startsNow.some((g) => (g.matchNum || "").includes("HOLDER"))) {
-                tdClass += " HOLDER";
-              }
-              if (startsNow.some((g) => (g.matchNum || "").includes("CHANGE_REQUEST"))) {
-                tdClass += " CHANGE_REQUEST";
-              }
-
-              const td = $(`<td class="${tdClass}" rowspan="${rowSpan}" title="${tooltip}">${teams}</td>`);
+            if (cluster) {
+              const rowSpan = Math.max(1, Math.ceil((cluster.end.getTime() - cluster.start.getTime()) / (15 * 60 * 1000)));
+              const td = buildClusterCell(cluster, rowSpan, cameraSchedule, dedicatedCameras);
               tr.append(td);
 
               const coverUntil = new Date(slotStart);
@@ -258,6 +232,83 @@
           end,
           durationMin,
         };
+      }
+
+      function getOverlapClusters(games) {
+        if (!games || games.length === 0) return [];
+        const sorted = [...games].sort((a, b) => a.start - b.start);
+        const clusters = [];
+        sorted.forEach((game) => {
+          const last = clusters[clusters.length - 1];
+          if (last && game.start.getTime() < last.end.getTime()) {
+            last.games.push(game);
+            if (game.end.getTime() > last.end.getTime()) {
+              last.end = new Date(game.end);
+            }
+          } else {
+            clusters.push({ start: new Date(game.start), end: new Date(game.end), games: [game] });
+          }
+        });
+        return clusters;
+      }
+
+      function buildClusterCell(cluster, rowSpan, cameraSchedule, dedicatedCameras) {
+        function resolveCamera(g) {
+          let camera = getCamera(cameraSchedule, g.time, g.date, g.fieldNum);
+          if (camera === "") {
+            const dedicated = dedicatedCameras.find((c) => g.freeholdTeam.includes(c[0]));
+            if (dedicated) camera = dedicated[1].toUpperCase();
+          }
+          return camera;
+        }
+
+        function buildTooltip(g) {
+          let tip = `vs ${g.opponent} | #${g.matchNum} | ${g.leagueType}`;
+          if ((g.matchNum || "").includes("HOLDER")) tip += "\nWaiting for game to approved in GotSport";
+          if ((g.matchNum || "").includes("CHANGE_REQUEST")) tip += "\nGame is planned to be moved, waiting approval in GotSport";
+          return tip;
+        }
+
+        if (cluster.games.length === 1) {
+          const g = cluster.games[0];
+          let tdClass = "gameCell";
+          const camera = resolveCamera(g);
+          if (camera !== "") tdClass += ` ${camera}`;
+          if ((g.matchNum || "").includes("HOLDER")) tdClass += " HOLDER";
+          if ((g.matchNum || "").includes("CHANGE_REQUEST")) tdClass += " CHANGE_REQUEST";
+          return $(`<td class="${tdClass}" rowspan="${rowSpan}" title="${buildTooltip(g)}">${g.freeholdTeam} (${g.year})</td>`);
+        }
+
+        const td = $(`<td class="overlapContainerCell" rowspan="${rowSpan}"></td>`);
+        const flex = $('<div class="sideBySideGames"></div>');
+
+        const clusterDuration = cluster.end.getTime() - cluster.start.getTime();
+        const n = cluster.games.length;
+        const MIN_PANEL_WIDTH = 120;
+        td.css('min-width', (n * MIN_PANEL_WIDTH) + 'px');
+
+        cluster.games.forEach((g, i) => {
+          let panelClass = "gamePanel";
+          const camera = resolveCamera(g);
+          if (camera !== "") panelClass += ` ${camera}`;
+          if ((g.matchNum || "").includes("HOLDER")) panelClass += " HOLDER";
+          if ((g.matchNum || "").includes("CHANGE_REQUEST")) panelClass += " CHANGE_REQUEST";
+
+          const topPct = ((g.start.getTime() - cluster.start.getTime()) / clusterDuration) * 100;
+          const heightPct = ((g.end.getTime() - g.start.getTime()) / clusterDuration) * 100;
+          const leftPct = (i / n) * 100;
+          const widthPct = 100 / n;
+
+          const timeLabel = g.start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+          const panel = $(`<div class="${panelClass}" title="${buildTooltip(g)}"></div>`);
+          panel.css({ top: topPct + "%", height: heightPct + "%", left: leftPct + "%", width: widthPct + "%" });
+          panel.append(`<div class="gamePanelTime">${timeLabel}</div>`);
+          panel.append(`<div class="gamePanelTeam">${g.freeholdTeam} (${g.year})</div>`);
+          flex.append(panel);
+        });
+
+        td.append(flex);
+        return td;
       }
 
       function getCamera(cameraSchedule, time, date, field) {
@@ -587,7 +638,45 @@
         border: 6px solid red !important;
       }
 
-      
+      .overlapContainerCell {
+        padding: 0;
+        position: relative;
+      }
+
+      .sideBySideGames {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ff4444;
+      }
+
+      .gamePanel {
+        position: absolute;
+        box-sizing: border-box;
+        padding: 2px 4px;
+        border-right: 1px solid rgba(0, 0, 0, 0.25);
+        font-size: 0.85rem;
+        font-weight: bold;
+        white-space: normal;
+        background: #dceffd;
+        overflow: hidden;
+      }
+
+      .gamePanel:last-child {
+        border-right: none;
+      }
+
+      .gamePanelTime {
+        font-size: 0.75rem;
+        color: #444;
+        font-weight: normal;
+      }
+
+      .gamePanelTeam {
+        font-weight: bold;
+      }
     </style>
   </head>
 
