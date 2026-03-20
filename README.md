@@ -23,7 +23,9 @@ Displays the league game schedule, focused on home games. The page:
 - For the time, show increaments of 15 minutes
 - When ordering fields, always order them Jackson Mills (FIelds that start with JM), then Opatut (fields that start with OP), Then MJT, then WFS.
 - If a game start before or after the times being displayed, update the table rounds up to the hour before the game and after the game ends, so if a game were to start at 7:45 then the times would start at 7. Similarly if a game ends at 7:15pm the table would end at 8.
-- Game duration rules:
+- Game duration rules (evaluated in priority order):
+    - If the `leagueType` field contains "2hour" (case-insensitive), the game is 2 hours (120 minutes).
+    - If the team's age group (`year` field) is U18 or older — matching values like `18B`, `18G`, `U18B`, `U18G`, `19B`, `19G`, `20B`, `20G`, etc. — the game is 2 hours (120 minutes).
     - Games on JM1 are 1 hour 30 minutes.
     - Games on Opatut fields are 1 hour 30 minutes only when the field name is the base field with no letter suffix, such as OP4, OP5, or OP6.
     - Games on Opatut lettered sub-fields, such as OP6A, OP6C, OP5A, or any field in the format OP#X where X is a letter, are 1 hour 15 minutes.

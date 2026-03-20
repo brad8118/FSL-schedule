@@ -221,7 +221,7 @@
       function normalizeGame(game) {
         const field = (game.fieldNum || "").toUpperCase().trim();
         const start = toDateTime(game.date, game.time);
-        const durationMin = getGameDurationMinutes(field);
+        const durationMin = getGameDurationMinutes(field, game.leagueType, game.year);
         const end = new Date(start);
         end.setMinutes(end.getMinutes() + durationMin);
 
@@ -328,7 +328,14 @@
         return "";
       }
 
-      function getGameDurationMinutes(fieldNum) {
+      function getGameDurationMinutes(fieldNum, leagueType, year) {
+        if ((leagueType || "").toLowerCase().includes("2hour")) {
+          return 120;
+        }
+        const ageMatch = (year || "").match(/U?(\d+)[BG]/i);
+        if (ageMatch && parseInt(ageMatch[1], 10) >= 18) {
+          return 120;
+        }
         const f = (fieldNum || "").toUpperCase();
         if (f === "JM1" || /^OP\d$/.test(f)) {
           return 90;
