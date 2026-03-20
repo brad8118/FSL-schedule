@@ -36,6 +36,18 @@ Displays the league game schedule, focused on home games. The page:
     - Show only the field where there is a game, but follow the same order as already outlined
     - Start the time on the table at 5pm and end at 10pm
 
+#### Rules for overlapping games on the same field
+- When two or more games on the same field overlap in time, they are grouped into an overlap cluster.
+- The cluster spans from the earliest game start to the latest game end across all overlapping games.
+- The cell for that field occupies a single `rowspan` covering the full cluster duration.
+- Games within the cluster are displayed **side by side** as vertical panels inside the cell.
+- Each panel's **top offset** is proportional to how far into the cluster that game starts (e.g. a game starting 30 minutes into a 90-minute cluster starts 33% down).
+- Each panel's **height** is proportional to that game's duration relative to the cluster duration.
+- Each panel's **width** is an equal share of the cell width (e.g. two games each get 50%).
+- The cell column is widened automatically (`min-width` = number of games × 120px) so games remain readable without a scrollbar.
+- Each panel shows the game's start time and team name, and inherits the VEO camera color class, HOLDER border, or CHANGE_REQUEST border as applicable.
+- The container background is red (#ff4444) so the overlapping area is visually distinct from normal cells.
+
 
 
 
