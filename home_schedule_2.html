@@ -176,6 +176,20 @@
           clustersByField[f] = getOverlapClusters(gamesByField[f]);
         });
 
+        const displayIntervalsByField = {};
+        const linkedShadeIntervalsByField = getLinkedShadeIntervalsByField(normalizedGames, fields, clustersByField);
+        fields.forEach((f) => {
+          displayIntervalsByField[f] = [
+            ...clustersByField[f].map((cluster) => ({
+              type: "game",
+              start: cluster.start,
+              end: cluster.end,
+              cluster,
+            })),
+            ...linkedShadeIntervalsByField[f],
+          ].sort((a, b) => a.start - b.start);
+        });
+
         const coverUntilByField = {};
         fields.forEach((f) => {
           coverUntilByField[f] = null;
@@ -194,16 +208,14 @@
               return;
             }
 
-            const cluster = clustersByField[field].find((c) => c.start.getTime() === slotStart.getTime());
+            const interval = displayIntervalsByField[field].find((item) => item.start.getTime() === slotStart.getTime());
 
-            if (cluster) {
-              const rowSpan = Math.max(1, Math.ceil((cluster.end.getTime() - cluster.start.getTime()) / (15 * 60 * 1000)));
-              const td = buildClusterCell(cluster, rowSpan, cameraSchedule, dedicatedCameras);
+            if (interval) {
+              const rowSpan = Math.max(1, Math.ceil((interval.end.getTime() - interval.start.getTime()) / (15 * 60 * 1000)));
+              const td = interval.type === "game" ? buildClusterCell(interval.cluster, rowSpan, cameraSchedule, dedicatedCameras) : buildLinkedShadeCell(interval, rowSpan);
               tr.append(td);
 
-              const coverUntil = new Date(slotStart);
-              coverUntil.setMinutes(coverUntil.getMinutes() + rowSpan * 15);
-              coverUntilByField[field] = coverUntil;
+              coverUntilByField[field] = new Date(interval.end);
             } else {
               tr.append('<td class="emptyCell">-</td>');
             }
@@ -250,6 +262,128 @@
           }
         });
         return clusters;
+      }
+
+      function getLinkedFields(fieldNum) {
+        const field = (fieldNum || "").toUpperCase().trim();
+
+        if (field === "OP4") return ["OP4A", "OP4C"];
+        if (field === "OP5") return ["OP5A", "OP5C"];
+        if (field === "OP6") return ["OP6A", "OP6C"];
+        if (field === "OP4A" || field === "OP4C") return ["OP4"];
+        if (field === "OP5A" || field === "OP5C") return ["OP5"];
+        if (field === "OP6A" || field === "OP6C") return ["OP6"];
+
+        return [];
+      }
+
+      function mergeIntervals(intervals) {
+        if (!intervals || intervals.length === 0) return [];
+
+        const sorted = [...intervals].sort((a, b) => a.start - b.start);
+        const merged = [{ ...sorted[0], sources: [...(sorted[0].sources || [])] }];
+
+        for (let i = 1; i < sorted.length; i++) {
+          const current = sorted[i];
+          const last = merged[merged.length - 1];
+
+          if (current.start.getTime() <= last.end.getTime()) {
+            if (current.end.getTime() > last.end.getTime()) {
+              last.end = new Date(current.end);
+            }
+            const combinedSources = new Set([...(last.sources || []), ...(current.sources || [])]);
+            last.sources = [...combinedSources].sort();
+          } else {
+            merged.push({ ...current, sources: [...(current.sources || [])] });
+          }
+        }
+
+        return merged;
+      }
+
+      function subtractIntervals(interval, blockers) {
+        if (!blockers || blockers.length === 0) {
+          return [{ start: new Date(interval.start), end: new Date(interval.end), sources: [...(interval.sources || [])] }];
+        }
+
+        let segments = [{ start: new Date(interval.start), end: new Date(interval.end), sources: [...(interval.sources || [])] }];
+
+        blockers.forEach((blocker) => {
+          const nextSegments = [];
+
+          segments.forEach((segment) => {
+            if (blocker.end.getTime() <= segment.start.getTime() || blocker.start.getTime() >= segment.end.getTime()) {
+              nextSegments.push(segment);
+              return;
+            }
+
+            if (blocker.start.getTime() > segment.start.getTime()) {
+              nextSegments.push({
+                start: new Date(segment.start),
+                end: new Date(blocker.start),
+                sources: [...segment.sources],
+              });
+            }
+
+            if (blocker.end.getTime() < segment.end.getTime()) {
+              nextSegments.push({
+                start: new Date(blocker.end),
+                end: new Date(segment.end),
+                sources: [...segment.sources],
+              });
+            }
+          });
+
+          segments = nextSegments;
+        });
+
+        return segments;
+      }
+
+      function getLinkedShadeIntervalsByField(games, fields, clustersByField) {
+        const fieldSet = new Set(fields.map((field) => field.toUpperCase()));
+        const rawIntervalsByField = {};
+
+        fields.forEach((field) => {
+          rawIntervalsByField[field] = [];
+        });
+
+        games.forEach((game) => {
+          const linkedFields = getLinkedFields(game.fieldNum).filter((field) => fieldSet.has(field));
+
+          linkedFields.forEach((field) => {
+            rawIntervalsByField[field].push({
+              start: new Date(game.start),
+              end: new Date(game.end),
+              sources: [game.fieldNum],
+            });
+          });
+        });
+
+        const shadeIntervalsByField = {};
+        fields.forEach((field) => {
+          const mergedRawIntervals = mergeIntervals(rawIntervalsByField[field]);
+          const actualIntervals = (clustersByField[field] || []).map((cluster) => ({ start: cluster.start, end: cluster.end }));
+          const remainingSegments = mergedRawIntervals.flatMap((interval) => subtractIntervals(interval, actualIntervals));
+
+          shadeIntervalsByField[field] = mergeIntervals(remainingSegments).map((interval) => ({
+            type: "linkedShade",
+            start: interval.start,
+            end: interval.end,
+            sources: interval.sources,
+          }));
+        });
+
+        return shadeIntervalsByField;
+      }
+
+      function buildLinkedShadeCell(interval, rowSpan) {
+        const sourceLabel = (interval.sources || []).join(", ");
+        const td = $(`<td class="linkedShadeCell" rowspan="${rowSpan}" title="Blocked because of a game on ${sourceLabel}"></td>`);
+        if (sourceLabel) {
+          td.append(`<div class="linkedShadeLabel">Blocked by ${sourceLabel}</div>`);
+        }
+        return td;
       }
 
       function buildClusterCell(cluster, rowSpan, cameraSchedule, dedicatedCameras) {
@@ -376,13 +510,20 @@
 
       function getFieldsForDate(games, isWeekend) {
         const gameFields = [...new Set(games.map((g) => g.fieldNum).filter((f) => f && f !== ""))];
+        const relatedFields = new Set(gameFields);
+
+        gameFields.forEach((field) => {
+          getLinkedFields(field).forEach((linkedField) => relatedFields.add(linkedField));
+        });
+
+        const fieldsToShow = [...relatedFields];
 
         if (isWeekend) {
-          const extras = gameFields.filter((f) => !WEEKEND_JM_FIELDS.includes(f));
+          const extras = fieldsToShow.filter((f) => !WEEKEND_JM_FIELDS.includes(f));
           return WEEKEND_JM_FIELDS.concat(extras.sort(compareFields));
         }
 
-        return gameFields.sort(compareFields);
+        return fieldsToShow.sort(compareFields);
       }
 
       function compareFields(a, b) {
@@ -635,6 +776,22 @@
 
       .emptyCell {
         background: #fff;
+      }
+
+      .linkedShadeCell {
+        background: repeating-linear-gradient(135deg, #f6c6c6, #f6c6c6 10px, #ef9b9b 10px, #ef9b9b 20px);
+        color: #6f1d1d;
+        font-size: 0.72rem;
+        font-weight: bold;
+        padding: 2px 4px;
+        vertical-align: middle;
+        text-align: center;
+        white-space: normal;
+      }
+
+      .linkedShadeLabel {
+        line-height: 1.15;
+        text-align: center;
       }
 
       .HOLDER {
