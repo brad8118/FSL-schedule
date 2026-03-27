@@ -1,564 +1,873 @@
 <!DOCTYPE html>
 <html>
-
   <head>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js">
-    </script>
-    
-
-    <script src="mock_league_schedule.js" ></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ical.js/0.0.3/ical.min.js" ></script>
-
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+    <script src="mock_league_schedule.js"></script>
 
     <script type="text/javascript">
-      $(document).ready(function(){
-        if (typeof getTestRequest == 'undefined') {
-          $('#btnFetchFromMock').hide()
+      const dayOfWeekLookup = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const WEEKEND_JM_FIELDS = ["JM1", "JM2", "JM3", "JM4", "JM5", "JM6"];
+
+      $(document).ready(function () {
+        if (typeof getTestRequest == "undefined") {
+          $("#btnFetchFromMock").hide();
           fetchDataOnLoad();
         }
       });
-    </script>
 
-    <script type="text/javascript">
-      const cameraMode = new URLSearchParams(window.location.search).has('camera');
-
-      const dayOfWeekLookup = ["Sunday",  "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",  "Saturday"];
-
-      function populateTableFromMockData(){
+      function populateTableFromMockData() {
         var response = getTestRequest();
-        console.log(response);
-        populateTableWithGames(response.values,[],[]);
+        populateTableWithGames(response.values, [], []);
       }
 
-      function fetchDataOnLoad(){
-        $.when(getAjax_fetchGamesFromSheet(), getAjax_fetchCameraFromSheet(), getAjax_fetchDedicatedCamerasFromSheet()).done(function(games, camera, dedicatedCameras){      
-          populateTableWithGames(games[0].values, camera[0].values, dedicatedCameras[0].values) ;
-        });   
+      function fetchDataOnLoad() {
+        $.when(getAjax_fetchGamesFromSheet(), getAjax_fetchCameraFromSheet(), getAjax_fetchDedicatedCamerasFromSheet()).done(function (games, camera, dedicatedCameras) {
+          populateTableWithGames(games[0].values, camera[0].values, dedicatedCameras[0].values);
+        });
       }
 
-      
       function getAjax_fetchGamesFromSheet() {
-        // let spreadsheetId="1peqZ_mflm9mLBVnsDzMsSDGLTq1mmpy4Qc0cpKVVUkc"        
-        let spreadsheetId="1W6564quxDmCBcgst1fCNtjo9MAxTgUB2ITRxtHR0QMU" //WORKSPACE
-
+        let spreadsheetId = "1W6564quxDmCBcgst1fCNtjo9MAxTgUB2ITRxtHR0QMU";
         let range = "league_schedule";
         let apiKey = "AIzaSyBvV43w6Zu3mpvKhTbn-Flh5jlc-7uzL5Y";
-        // let apiKey = "AIzaSyBn6iE-V-EPhqfO2vxljicpAs6Eb3EGsYQ"; //WORKSPACE
-
-        
         let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
-        // let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`;
 
-        
         return $.ajax({
           type: "GET",
           url: url,
           cache: false,
           data: "",
-          success: function(response) {
-            console.log("getAjax_fetchGamesFromSheet")
-            console.log(response)
-            // populateTableWithGames(response.values);
-          }
         });
       }
 
       function getAjax_fetchCameraFromSheet() {
-        // register for camera
-        // let spreadsheetId="1kDDCR00vmKfweClc4zgR5f761yoIoa-9q5Uu1da2iSk" // freehold account
-        let spreadsheetId="1cFZTmUQS9E8yCpPR7NiSEnRy3QPGTwziw4I83vY52xA"   
-
+        let spreadsheetId = "1cFZTmUQS9E8yCpPR7NiSEnRy3QPGTwziw4I83vY52xA";
         let apiKey = "AIzaSyA46O2IahxdN4TVVhEwg5VWGx73aoZ2edk";
-
         let range = "camera";
         let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
-        
+
         return $.ajax({
           type: "GET",
           url: url,
           cache: false,
           data: "",
-          success: function(response) {
-            console.log(response)
-          }
         });
       }
 
       function getAjax_fetchDedicatedCamerasFromSheet() {
-        // register for camera
-        let spreadsheetId="1cFZTmUQS9E8yCpPR7NiSEnRy3QPGTwziw4I83vY52xA"        
+        let spreadsheetId = "1cFZTmUQS9E8yCpPR7NiSEnRy3QPGTwziw4I83vY52xA";
         let apiKey = "AIzaSyA46O2IahxdN4TVVhEwg5VWGx73aoZ2edk";
-
         let range = "DedicatedCameras";
         let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
-        
+
         return $.ajax({
           type: "GET",
           url: url,
           cache: false,
           data: "",
-          success: function(response) {
-            console.log(response)
-          }
         });
       }
 
-      function saveCameraToSheet(cameraSchedule) {
-        // let spreadsheetId="1peqZ_mflm9mLBVnsDzMsSDGLTq1mmpy4Qc0cpKVVUkc"s
-        let spreadsheetId="1W6564quxDmCBcgst1fCNtjo9MAxTgUB2ITRxtHR0QMU" //WORKSPACE
-        let range = "camera!A2";
-        let apiKey = "4ff406e604c011d4499a8ce1f874d7ebc0b3e2f9";
-        // let apiKey = "AIzaSyBvV43w6Zu3mpvKhTbn-Flh5jlc-7uzL5Y"; // key1
-        // let apiKey = "AAIzaSyAa8yy0GdcGPHdtD083HiGGx_S0vMPScDM";
-        let otherDefaults = "valueInputOption=RAW&includeValuesInResponse=true&alt=json"
-        let url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?${otherDefaults}&key=${apiKey}`;
-
-          // /values/camera!A2?valueInputOption=RAW&includeValuesInResponse=true&alt=json&key=AIzaSyAa8yy0GdcGPHdtD083HiGGx_S0vMPScDM
-          // /values/camera!A2?valueInputOption=RAW&includeValuesInResponse=true&alt=json&key=AAIzaSyAa8yy0GdcGPHdtD083HiGGx_S0vMPScDM
-
-        return $.ajax({
-          type: "PUT",
-          url: url,
-          cache: false,
-          data : { 'values':[cameraSchedule],"majorDimension":"ROWS"},
-          success: function(response) {
-            console.log("dedicated Cameras", response)
-            // populateTableWithGames(response.values);
-          }
-        });
-      }
-       
-
-      function getAjax_getCameraSchedule(){
-        return $.ajax({
-          type: "GET",
-          url: 'https://reverse-cors.herokuapp.com/http://ical-cdn.teamsnap.com/team_schedule/c63039e7-4db3-42ff-ab1c-c1b26b730995.ics',
-          cache: false,
-          data: "",
-          success: function(response) {
-            // console.log(response)
-          }
-        });
+      function convert2DArrayToJson(json) {
+        let data = json;
+        let keys = data.shift();
+        return data.map((row) => Object.assign({}, ...row.map((x, i) => ({ [keys[i]]: x }))));
       }
 
-      function convertCameraScheduleResponse(response){
-        var jcalData = ICAL.parse(response);
-        let cameraScheduled = []
-        for(v of jcalData[1][2]){
-          if(v[0] == 'vevent'){
-            let vevent = v[1]; //vevent
-            for(ve of vevent){
-              if(ve[0] == "description" && ve[3].includes("VEO")){
-                let camera={};
-                camera['camera']="camera # not set in description";
-                if(ve[3].toLowerCase().includes("veo 1"))
-                  camera['camera']="VEO 1";
-                else if(ve[3].toLowerCase().includes("veo 2"))
-                  camera['camera']="VEO 2";
-                else if(ve[3].toLowerCase().includes("veo 3"))
-                  camera['camera']="VEO 3";
-                else
-                camera['failed'] = "veo 1,2,3 not found in description"
-                
-                for(i of vevent){
-                  if(i[0] == 'dtstart')
-                    camera['start'] = i[3];
-                  else if(i[0] == 'description')
-                    camera['description'] = i[3];
-                  else if(i[0] == 'location')
-                    camera['field'] = i[3];                  
-                }                  
+      function groupBy(data, groupByAttribute) {
+        return data.reduce(function (obj, item) {
+          obj[item[groupByAttribute]] = obj[item[groupByAttribute]] || [];
+          obj[item[groupByAttribute]].push(item);
+          return obj;
+        }, {});
+      }
 
-                cameraScheduled.push(camera)
-              }
-            }
-          }              
+      function showOldGamesCkbChange() {
+        if (typeof getTestRequest == "undefined") {
+          fetchDataOnLoad();
+        } else {
+          populateTableFromMockData();
         }
-        return cameraScheduled
       }
 
-      function populateTableWithGames(games, camera, dedicatedCameras){
-        // let cameraSchedule = convertCameraScheduleResponse(camera);
-        let cameraSchedule = convert2DArrayToJson(camera);
+      function populateTableWithGames(games, camera, dedicatedCameras) {
+        let cameraSchedule = camera && camera.length ? convert2DArrayToJson(camera) : [];
+        let dedicatedCameraRows = dedicatedCameras && dedicatedCameras.length ? dedicatedCameras : [];
         var converted = convert2DArrayToJson(games);
-        var ckbShowPastGames = $("#ckbShowPastGames");
 
-        if (!$('#ckbShowPastGames').is(":checked")){
+        if (!$("#ckbShowPastGames").is(":checked")) {
           converted = converted.filter(function (v) {
             let now = new Date();
-            now.setHours(0,0,0,0);
+            now.setHours(0, 0, 0, 0);
             return new Date(v.date).getTime() >= now.getTime();
           });
         }
 
-        let homeGames = converted.filter(v => v.homeGame === "HOME");
-        homeGames.forEach(g => {
-          // force to 9/17/2016
+        let homeGames = converted.filter((v) => v.homeGame === "HOME");
+        homeGames.forEach((g) => {
           g.date = new Date(g.date).toLocaleDateString("en-US");
-        }) ;
-        homeGames.sort((a, b) => (new Date(a.date) - new Date(b.date) ))
-        // console.log("HOME GAMES", homeGames)
-
-        var gamesGroupedByDate = groupBy(homeGames,'date');
-        // console.log("gamesGroupedByDate", gamesGroupedByDate);
-        
-        $('#testTbl').html(""); // clear out existing
-        for (var key in gamesGroupedByDate){
-          buildGameTable(gamesGroupedByDate[key], cameraSchedule, dedicatedCameras);
-        }
-      }
-
-      
-
-      function groupBy(data, groupByAttribute){
-          var groupedBy = data.reduce(function (obj, item) {
-            obj[item[groupByAttribute]] = obj[item[groupByAttribute]] || [];
-            obj[item[groupByAttribute]].push(item);
-            return obj;
-        }, {});
-        return groupedBy;
-      }
-
-
-      function convert2DArrayToJson(json){
-        // vacate headers/keys
-        let data = json;
-        let keys = data.shift()
-        console.log("Header keys:", keys)
-        // create JSON objects from Array
-        let result = data.map(data =>
-            Object.assign({}, ...data.map((x, i) => ({ [keys[i]]: x })))
-        );
-        console.log("convert2DArrayToJson", result);
-        return result
-      }
-
-      function buildGameTable(gamesByDate, cameraSchedule, dedicatedCameras){
-        console.log("gamesByDate", gamesByDate)
-        // console.log(cameraSchedule)
-        //already grouped by date, now order by time  
-        gamesByDate.sort(function (a, b) {  
-          console.log(a.matchNum, b.matchNum, a.time, b.time, new Date('1970/01/01 ' + a.time).getTime(), new Date('1970/01/01 ' + b.time).getTime(), new Date('1970/01/01 ' + a.time).getTime() - new Date('1970/01/01 ' + b.time).getTime())
-          return new Date('1970/01/01 ' + a.time).getTime() - new Date('1970/01/01 ' + b.time).getTime();
         });
 
-        var groupByDate = $('<div/>'),
-          seperator = $('<div/>'),
-          table = $('<table/>'),
-          table_head = $('<thead/>'),
-          head_row = $('<tr/>'),
-          table_body = $('<tbody/>'),
-          body_row = [];
+        homeGames.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        // let formattedDay =  `${dayOfWeekLookup[new Date(gamesByDate[0].date).getDay()]}, ${gamesByDate[0].date}`
-        // let formattedDay =  `${new Date(gamesByDate[0].date)}`
-        let dayOfWeek = dayOfWeekLookup[new Date(gamesByDate[0].date).getDay()]
-        let dayStr = new Date(gamesByDate[0].date).toLocaleString().split(',')[0];   
+        var gamesGroupedByDate = groupBy(homeGames, "date");
 
-        groupByDate.append(`<div class="groupedByDate">${dayOfWeek}, ${dayStr}<div/>`);
-        
-        var gamesGroupedByTime = groupBy(gamesByDate, 'time');        
-        if("" in gamesGroupedByTime){
-           var notScheduledGames = "";
-           gamesGroupedByTime[""].forEach( game => {
-               notScheduledGames += `<label>(${game.leagueType} #${game.matchNum}) ${game.freeholdTeam}, </label>`
-             });
-          delete gamesGroupedByTime[""];
-          groupByDate.append('<div class="gamesNotScheduled"><b>Games Not Scheduled yet:</b> ' + notScheduledGames + "<div/>");          
+        $("#testTbl").html("");
+        for (var key in gamesGroupedByDate) {
+          buildGameTableByRules(gamesGroupedByDate[key], cameraSchedule, dedicatedCameraRows);
         }
-        // console.log("gamesGroupedByTime ", gamesGroupedByTime);  
-          
-        // 9v9	9v9	9v9	9v9		7v7	7v7	7v7	7v7		11v11	11v11		7v7	7v7
-        // OP4A	OP4B	OP4C	OP4D		OP6A	OP6B	OP6C	OP6D		OP5	OP5		JM5	JM6
-        // var fields = ["OP4A","OP4B","OP4C","OP4D","OP6A","OP6B","OP6C","OP6D","OP5","OP5","JM5","JM6"];
-        // var fields = ["OP4","OP6B","OP6C","OP6D","OP5","OP5","JM5","JM6"];
-        var fields = ["JM1", "JM2", "JM3","JM4","JM5","JM6"];
+      }
 
-        // search for any fields not at JM (typically we only have games at JM)
-        var extraFields = [];
-        for (g of gamesByDate){
-          if(g.fieldNum && g.fieldNum != "" && !(fields.includes(g.fieldNum)) && !(extraFields.includes(g.fieldNum))){
-            extraFields.push(g.fieldNum);
+      function buildGameTableByRules(gamesByDate, cameraSchedule, dedicatedCameras) {
+        if (!gamesByDate || gamesByDate.length === 0) {
+          return;
+        }
+
+        gamesByDate.sort((a, b) => toDateTime(a.date, a.time) - toDateTime(b.date, b.time));
+
+        const dateStr = gamesByDate[0].date;
+        const dateObj = new Date(dateStr);
+        const dayOfWeek = dateObj.getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+        const groupByDate = $("<div/>");
+        const formattedDate = dateObj.toLocaleString().split(",")[0];
+        groupByDate.append(`<div class="groupedByDate">${dayOfWeekLookup[dayOfWeek]}, ${formattedDate}</div>`);
+
+        const scheduledGames = gamesByDate.filter((g) => g.time && g.time.trim() !== "" && g.fieldNum && g.fieldNum.trim() !== "");
+        const unscheduledGames = gamesByDate.filter((g) => !g.time || g.time.trim() === "" || !g.fieldNum || g.fieldNum.trim() === "");
+
+        if (unscheduledGames.length > 0) {
+          const labels = unscheduledGames
+            .map((g) => `(${g.leagueType} #${g.matchNum}) ${g.freeholdTeam}`)
+            .join(", ");
+          groupByDate.append(`<div class="gamesNotScheduled"><b>Games Not Scheduled yet:</b> ${labels}</div>`);
+        }
+
+        if (scheduledGames.length === 0) {
+          groupByDate.append('<div class="emptyDate">No scheduled home games for this day.</div>');
+          $("#testTbl").append(groupByDate);
+          return;
+        }
+
+        const normalizedGames = scheduledGames.map((g) => normalizeGame(g));
+        const fields = getFieldsForDate(normalizedGames, isWeekend);
+        const timeWindow = getTimeWindowForDate(normalizedGames, dateObj, isWeekend);
+        const slots = build15MinuteSlots(timeWindow.start, timeWindow.end);
+
+        const table = $("<table/>");
+        const tableHead = $("<thead/>");
+        const headRow = $("<tr/>");
+        const tableBody = $("<tbody/>");
+
+        headRow.append("<th>Time</th>");
+        fields.forEach((field) => headRow.append(`<th>${getFieldHeaderLabel(field)}</th>`));
+        tableHead.append(headRow);
+
+        const gamesByField = {};
+        fields.forEach((f) => {
+          gamesByField[f] = normalizedGames
+            .filter((g) => g.fieldNum.toUpperCase() === f.toUpperCase())
+            .sort((a, b) => a.start - b.start);
+        });
+
+        const clustersByField = {};
+        fields.forEach((f) => {
+          clustersByField[f] = getOverlapClusters(gamesByField[f]);
+        });
+
+        const displayIntervalsByField = {};
+        const linkedShadeIntervalsByField = getLinkedShadeIntervalsByField(normalizedGames, fields, clustersByField);
+        fields.forEach((f) => {
+          displayIntervalsByField[f] = [
+            ...clustersByField[f].map((cluster) => ({
+              type: "game",
+              start: cluster.start,
+              end: cluster.end,
+              cluster,
+            })),
+            ...linkedShadeIntervalsByField[f],
+          ].sort((a, b) => a.start - b.start);
+        });
+
+        const coverUntilByField = {};
+        fields.forEach((f) => {
+          coverUntilByField[f] = null;
+        });
+
+        slots.forEach((slotStart) => {
+          const isHourRow = slotStart.getMinutes() === 0;
+          const rowClass = isHourRow ? "slotRow hourRow" : "slotRow quarterRow";
+          const tr = $(`<tr class="${rowClass}"/>`);
+          if (isHourRow) {
+            tr.append(`<td class="timeCol" rowspan="4">${formatTime(slotStart)}</td>`);
           }
-        }
-        if(extraFields.length > 0)
-          fields = fields.concat(extraFields.sort());
 
-        head_row.append(`<th>Times</th>`); // vertial column
-        for (f of fields){
-          head_row.append(`<th>${f}</th>`);
-        }
-        
-        const cameraList = ['NONE', 'VEO1', 'VEO2', 'VEO3', 'VEO4', 'VEO5'];
-
-        var index = -1;
-        $.each(gamesGroupedByTime, function(time, grouped) {
-          // console.log("grouped ", grouped)
-          index++;
-          body_row[index] = $('<tr/>');
-          body_row[index].append('<td>' + grouped[0].time + '</td>');
-
-          for(field of fields){
-            const gamesOnField = grouped.filter(v => v.fieldNum == field);
-            if (gamesOnField.length > 0){
-              var gamesStr = "";
-              var classGamesAtSameTime = "";
-              
-              // allow for muliple games at the same time & same field
-              for(g of gamesOnField){                
-                gamesStr += `<span class="${classGamesAtSameTime}">${g.freeholdTeam}(${g.year})</span>`; 
-                classGamesAtSameTime = "sameTimeSameField";
-              }
-              
-
-              // get the camera thats scheduled, if one isn't scheduled check if there's a dedicated camera
-              let camera = getCamera(cameraSchedule, grouped[0].time, grouped[0].date, field);
-              if(camera == ""){
-                console.log("teamName ", gamesOnField[0].freeholdTeam)
-                var dedicatedCamera = dedicatedCameras.find(c => gamesOnField[0].freeholdTeam.includes(c[0]));
-                if(dedicatedCamera){
-                  camera = dedicatedCamera[1].toUpperCase();
-                }
-              }
-
-              var dropdown = $('<select onchange="cameraChanged(this)" />');
-              for(c of cameraList) {
-                  $('<option />', {value: c, text: c}).appendTo(dropdown);
-              }
-
-              let classGameHolder = "";
-              if(g.matchNum.includes("HOLDER")){
-                classGameHolder = "HOLDER"
-              }
-              else if(g.matchNum.includes("CHANGE_REQUEST")){
-                classGameHolder = "CHANGE_REQUEST"
-              }
-
-              let id =`${grouped[0].date}__${grouped[0].time}__${field}`;
-              id = id.replaceAll('/', "-")
-              id = id.replaceAll(' ', "")
-              id = id.replaceAll(':', "")            
-              var td = $(`<td id="${id}" class="${camera} ${classGameHolder}" title="vs ${g.opponent} Game# (${g.matchNum})  League (${g.leagueType}) ${g.year}"> </td>`);
-              if(cameraMode){
-                td.append(dropdown);
-                td.append("<br />");
-              }
-
-              td.append(gamesStr);
-              // if(camera)
-              //   td.append(`<br /><span>${camera}</span>`);
-
-              body_row[index].append(td);
-            }else{
-              body_row[index].append('<td> - </td>');
+          fields.forEach((field) => {
+            if (coverUntilByField[field] && slotStart < coverUntilByField[field]) {
+              return;
             }
+
+            const interval = displayIntervalsByField[field].find((item) => item.start.getTime() === slotStart.getTime());
+
+            if (interval) {
+              const rowSpan = Math.max(1, Math.ceil((interval.end.getTime() - interval.start.getTime()) / (15 * 60 * 1000)));
+              const td = interval.type === "game" ? buildClusterCell(interval.cluster, rowSpan, cameraSchedule, dedicatedCameras) : buildLinkedShadeCell(interval, rowSpan);
+              tr.append(td);
+
+              coverUntilByField[field] = new Date(interval.end);
+            } else {
+              tr.append('<td class="emptyCell">-</td>');
+            }
+          });
+
+          tableBody.append(tr);
+        });
+
+        table.append(tableHead);
+        table.append(tableBody);
+        groupByDate.append(table);
+        $("#testTbl").append(groupByDate);
+      }
+
+      function normalizeGame(game) {
+        const field = (game.fieldNum || "").toUpperCase().trim();
+        const start = toDateTime(game.date, game.time);
+        const durationMin = getGameDurationMinutes(field, game.leagueType, game.year);
+        const end = new Date(start);
+        end.setMinutes(end.getMinutes() + durationMin);
+
+        return {
+          ...game,
+          fieldNum: field,
+          start,
+          end,
+          durationMin,
+        };
+      }
+
+      function getOverlapClusters(games) {
+        if (!games || games.length === 0) return [];
+        const sorted = [...games].sort((a, b) => a.start - b.start);
+        const clusters = [];
+        sorted.forEach((game) => {
+          const last = clusters[clusters.length - 1];
+          if (last && game.start.getTime() < last.end.getTime()) {
+            last.games.push(game);
+            if (game.end.getTime() > last.end.getTime()) {
+              last.end = new Date(game.end);
+            }
+          } else {
+            clusters.push({ start: new Date(game.start), end: new Date(game.end), games: [game] });
           }
         });
-          
-        // seperator
-        table_head.append(head_row);
-        table_body.append(body_row)
-        table.append(table_head);
-        table.append(table_body);
-
-        groupByDate.append(table);
-        
-        $('#testTbl').append(groupByDate);
+        return clusters;
       }
 
-      function getCamera(cameraSchedule, time, date, field){
-        // 2023-04-17T19:15:00
+      function getLinkedFields(fieldNum) {
+        const field = (fieldNum || "").toUpperCase().trim();
 
-        let cameraOnField = cameraSchedule.find(function (c) {       
-          time = time.replaceAll(" ", "")
-          c_time = c.time.replaceAll(" ", "")
-          c_time = c_time.toUpperCase()
-          field = field.replaceAll(" ", "")
-          c_field = c.field.replaceAll(" ", "")
-          c_field = c_field.toUpperCase()
+        if (field === "OP4") return ["OP4A", "OP4C"];
+        if (field === "OP5") return ["OP5A", "OP5C"];
+        if (field === "OP6") return ["OP6A", "OP6C"];
+        if (field === "OP4A" || field === "OP4C") return ["OP4"];
+        if (field === "OP5A" || field === "OP5C") return ["OP5"];
+        if (field === "OP6A" || field === "OP6C") return ["OP6"];
 
-          return c.date == date && c_time == time && field.toUpperCase() == c_field;
+        return [];
+      }
+
+      function mergeIntervals(intervals) {
+        if (!intervals || intervals.length === 0) return [];
+
+        const sorted = [...intervals].sort((a, b) => a.start - b.start);
+        const merged = [{ ...sorted[0], sources: [...(sorted[0].sources || [])] }];
+
+        for (let i = 1; i < sorted.length; i++) {
+          const current = sorted[i];
+          const last = merged[merged.length - 1];
+
+          if (current.start.getTime() <= last.end.getTime()) {
+            if (current.end.getTime() > last.end.getTime()) {
+              last.end = new Date(current.end);
+            }
+            const combinedSources = new Set([...(last.sources || []), ...(current.sources || [])]);
+            last.sources = [...combinedSources].sort();
+          } else {
+            merged.push({ ...current, sources: [...(current.sources || [])] });
+          }
+        }
+
+        return merged;
+      }
+
+      function subtractIntervals(interval, blockers) {
+        if (!blockers || blockers.length === 0) {
+          return [{ start: new Date(interval.start), end: new Date(interval.end), sources: [...(interval.sources || [])] }];
+        }
+
+        let segments = [{ start: new Date(interval.start), end: new Date(interval.end), sources: [...(interval.sources || [])] }];
+
+        blockers.forEach((blocker) => {
+          const nextSegments = [];
+
+          segments.forEach((segment) => {
+            if (blocker.end.getTime() <= segment.start.getTime() || blocker.start.getTime() >= segment.end.getTime()) {
+              nextSegments.push(segment);
+              return;
+            }
+
+            if (blocker.start.getTime() > segment.start.getTime()) {
+              nextSegments.push({
+                start: new Date(segment.start),
+                end: new Date(blocker.start),
+                sources: [...segment.sources],
+              });
+            }
+
+            if (blocker.end.getTime() < segment.end.getTime()) {
+              nextSegments.push({
+                start: new Date(blocker.end),
+                end: new Date(segment.end),
+                sources: [...segment.sources],
+              });
+            }
           });
+
+          segments = nextSegments;
+        });
+
+        return segments;
+      }
+
+      function getLinkedShadeIntervalsByField(games, fields, clustersByField) {
+        const fieldSet = new Set(fields.map((field) => field.toUpperCase()));
+        const rawIntervalsByField = {};
+
+        fields.forEach((field) => {
+          rawIntervalsByField[field] = [];
+        });
+
+        games.forEach((game) => {
+          const linkedFields = getLinkedFields(game.fieldNum).filter((field) => fieldSet.has(field));
+
+          linkedFields.forEach((field) => {
+            rawIntervalsByField[field].push({
+              start: new Date(game.start),
+              end: new Date(game.end),
+              sources: [game.fieldNum],
+            });
+          });
+        });
+
+        const shadeIntervalsByField = {};
+        fields.forEach((field) => {
+          const mergedRawIntervals = mergeIntervals(rawIntervalsByField[field]);
+          const actualIntervals = (clustersByField[field] || []).map((cluster) => ({ start: cluster.start, end: cluster.end }));
+          const remainingSegments = mergedRawIntervals.flatMap((interval) => subtractIntervals(interval, actualIntervals));
+
+          shadeIntervalsByField[field] = mergeIntervals(remainingSegments).map((interval) => ({
+            type: "linkedShade",
+            start: interval.start,
+            end: interval.end,
+            sources: interval.sources,
+          }));
+        });
+
+        return shadeIntervalsByField;
+      }
+
+      function buildLinkedShadeCell(interval, rowSpan) {
+        const sourceLabel = (interval.sources || []).join(", ");
+        const td = $(`<td class="linkedShadeCell" rowspan="${rowSpan}" title="Blocked because of a game on ${sourceLabel}"></td>`);
+        if (sourceLabel) {
+          td.append(`<div class="linkedShadeLabel">Blocked by ${sourceLabel}</div>`);
+        }
+        return td;
+      }
+
+      function buildClusterCell(cluster, rowSpan, cameraSchedule, dedicatedCameras) {
+        function resolveCamera(g) {
+          let camera = getCamera(cameraSchedule, g.time, g.date, g.fieldNum);
+          if (camera === "") {
+            const dedicated = dedicatedCameras.find((c) => g.freeholdTeam.includes(c[0]));
+            if (dedicated) camera = dedicated[1].toUpperCase();
+          }
+          return camera;
+        }
+
+        function buildTooltip(g) {
+          let tip = `vs ${g.opponent} | #${g.matchNum} | ${g.leagueType}`;
+          if ((g.matchNum || "").includes("HOLDER")) tip += "\nWaiting for game to approved in GotSport";
+          if ((g.matchNum || "").includes("CHANGE_REQUEST")) tip += "\nGame is planned to be moved, waiting approval in GotSport";
+          return tip;
+        }
+
+        if (cluster.games.length === 1) {
+          const g = cluster.games[0];
+          let tdClass = "gameCell";
+          const camera = resolveCamera(g);
+          if (camera !== "") tdClass += ` ${camera}`;
+          if ((g.matchNum || "").includes("HOLDER")) tdClass += " HOLDER";
+          if ((g.matchNum || "").includes("CHANGE_REQUEST")) tdClass += " CHANGE_REQUEST";
+          return $(`<td class="${tdClass}" rowspan="${rowSpan}" title="${buildTooltip(g)}">${g.freeholdTeam} (${g.year})</td>`);
+        }
+
+        const td = $(`<td class="overlapContainerCell" rowspan="${rowSpan}"></td>`);
+        const flex = $('<div class="sideBySideGames"></div>');
+
+        const clusterDuration = cluster.end.getTime() - cluster.start.getTime();
+        const n = cluster.games.length;
+        const MIN_PANEL_WIDTH = 120;
+        td.css('min-width', (n * MIN_PANEL_WIDTH) + 'px');
+
+        cluster.games.forEach((g, i) => {
+          let panelClass = "gamePanel";
+          const camera = resolveCamera(g);
+          if (camera !== "") panelClass += ` ${camera}`;
+          if ((g.matchNum || "").includes("HOLDER")) panelClass += " HOLDER";
+          if ((g.matchNum || "").includes("CHANGE_REQUEST")) panelClass += " CHANGE_REQUEST";
+
+          const topPct = ((g.start.getTime() - cluster.start.getTime()) / clusterDuration) * 100;
+          const heightPct = ((g.end.getTime() - g.start.getTime()) / clusterDuration) * 100;
+          const leftPct = (i / n) * 100;
+          const widthPct = 100 / n;
+
+          const timeLabel = g.start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+          const panel = $(`<div class="${panelClass}" title="${buildTooltip(g)}"></div>`);
+          panel.css({ top: topPct + "%", height: heightPct + "%", left: leftPct + "%", width: widthPct + "%" });
+          panel.append(`<div class="gamePanelTime">${timeLabel}</div>`);
+          panel.append(`<div class="gamePanelTeam">${g.freeholdTeam} (${g.year})</div>`);
+          flex.append(panel);
+        });
+
+        td.append(flex);
+        return td;
+      }
+
+      function getCamera(cameraSchedule, time, date, field) {
+        let cameraOnField = cameraSchedule.find(function (c) {
+          let gameTime = time.replaceAll(" ", "").toUpperCase();
+          let cameraTime = c.time.replaceAll(" ", "").toUpperCase();
+          let gameField = field.replaceAll(" ", "").toUpperCase();
+          let cameraField = c.field.replaceAll(" ", "").toUpperCase();
+
+          return c.date == date && cameraTime == gameTime && gameField == cameraField;
+        });
+
+        if (cameraOnField) {
+          return cameraOnField.camera.toUpperCase().replaceAll(" ", "");
+        }
+
+        return "";
+      }
+
+      function getGameDurationMinutes(fieldNum, leagueType, year) {
+        if ((leagueType || "").toLowerCase().includes("2hour")) {
+          return 120;
+        }
+        const ageMatch = (year || "").match(/U?(\d+)[BG]/i);
+        if (ageMatch && parseInt(ageMatch[1], 10) >= 18) {
+          return 120;
+        }
+        const f = (fieldNum || "").toUpperCase();
+        if (f === "JM1" || /^OP\d$/.test(f)) {
+          return 90;
+        }
+        return 75;
+      }
+
+      function getFieldHeaderLabel(fieldNum) {
+        const size = getFieldSize(fieldNum);
+        if (size === "") {
+          return fieldNum;
+        }
+
+        return `${fieldNum}<br /><span class="fieldSize">${size}</span>`;
+      }
+
+      function getFieldSize(fieldNum) {
+        const f = (fieldNum || "").toUpperCase();
+
+        if (["JM2", "JM3", "JM4"].includes(f)) {
+          return "7v7";
+        }
+
+        if (["JM5", "JM6"].includes(f)) {
+          return "9v9";
+        }
         
-        if(cameraOnField){
-          let camera = cameraOnField.camera;
-          camera = camera.toUpperCase()
-          camera = camera.replaceAll(" ", "")
-          return camera
+        if (["JM5", "JM6", "OP4A", "OP4C", "OP5A", "OP5C", "OP6A", "OP6C"].includes(f)) {
+          return "7v7 / 9v9";
         }
 
-        return ""
-      }
-
-      // this was parsing from calendar feed
-      // function getCamera(cameraSchedule, time, date, field){
-      //   // 2023-04-17T19:15:00
-      //   let currentGameTime = new Date(`${date} ${time}`)
-      //   for(c of cameraSchedule){
-      //     let cameraDateTime = new Date(c['start'])
-      //     if(c['field'].toLowerCase().includes(field.toLowerCase())){
-
-      //       if( new Date(c['start']).getTime() == currentGameTime.getTime()){
-      //         console.log("brad")
-      //         if(c['failed']){
-      //           console.log("issue getting camera value")
-      //           console.log(c)
-      //         }
-      //         return ` <span class='${c['camera'].replace(" ", "")}'>(${c['camera']})</span>`
-      //       }
-      //     }
-      //   }
-      //   return ""
-      // }
-
-      /**
-       * when in camera mode url has camera=true in the url, dropdown is available to set camera
-       * This is fired when a dropdown changes values
-       **/
-      function cameraChanged(dropdown){
-        $(dropdown).parent().removeClass(`cameraSet VEO1 VEO2 VEO3 VEO4 VEO5 VEO6 VEO7 VEO8 VEO9`);
-
-        if(dropdown.value != "NONE")
-          $(dropdown).parent().addClass(`cameraSet ${dropdown.value}`);
-        
-          // var parent_id = $(dropdown).parent().attr("id");
-        // console.log(dropdown.value)
-        // console.log(pid)
-      }
-
-      function saveCameraSettings(){
-        let camerasSet = $(".cameraSet")
-        let scheduled = {};
-        for(c of camerasSet){
-          scheduled[$(c).attr('id')] = $(c).attr('class').replace("cameraSet ", "")
+        if (["JM1", "OP4", "OP5", "OP6"].includes(f)) {
+          return "11v11";
         }
-        // console.log(scheduled)
-        saveCameraToSheet(scheduled)
-      }
-        
-      function showOldGamesCkbChange(e){
-        const {checked} = e.target;
 
-        if (typeof getTestRequest == 'undefined') {
-          fetchDataOnLoad();
-        }
-        else{
-          populateTableFromMockData()
-        }
+        return "";
       }
 
+      function getFieldsForDate(games, isWeekend) {
+        const gameFields = [...new Set(games.map((g) => g.fieldNum).filter((f) => f && f !== ""))];
+        const relatedFields = new Set(gameFields);
+
+        gameFields.forEach((field) => {
+          getLinkedFields(field).forEach((linkedField) => relatedFields.add(linkedField));
+        });
+
+        const fieldsToShow = [...relatedFields];
+
+        if (isWeekend) {
+          const extras = fieldsToShow.filter((f) => !WEEKEND_JM_FIELDS.includes(f));
+          return WEEKEND_JM_FIELDS.concat(extras.sort(compareFields));
+        }
+
+        return fieldsToShow.sort(compareFields);
+      }
+
+      function compareFields(a, b) {
+        const rankA = getFieldPrefixRank(a);
+        const rankB = getFieldPrefixRank(b);
+        if (rankA !== rankB) {
+          return rankA - rankB;
+        }
+
+        const parsedA = parseFieldSuffix(a);
+        const parsedB = parseFieldSuffix(b);
+
+        if (parsedA.number !== parsedB.number) {
+          return parsedA.number - parsedB.number;
+        }
+
+        return parsedA.suffix.localeCompare(parsedB.suffix);
+      }
+
+      function getFieldPrefixRank(field) {
+        const upper = (field || "").toUpperCase();
+        if (upper.startsWith("JM")) return 0;
+        if (upper.startsWith("OP")) return 1;
+        if (upper.startsWith("MJT")) return 2;
+        if (upper.startsWith("WFS")) return 3;
+        return 4;
+      }
+
+      function parseFieldSuffix(field) {
+        const upper = (field || "").toUpperCase();
+        const stripped = upper.replace(/^(JM|OP|MJT|WFS)/, "");
+        const match = stripped.match(/^(\d+)(.*)$/);
+        if (!match) {
+          return { number: Number.MAX_SAFE_INTEGER, suffix: stripped };
+        }
+
+        return {
+          number: parseInt(match[1], 10),
+          suffix: match[2] || "",
+        };
+      }
+
+      function getTimeWindowForDate(games, dateObj, isWeekend) {
+        const start = new Date(dateObj);
+        const end = new Date(dateObj);
+
+        if (isWeekend) {
+          start.setHours(8, 0, 0, 0);
+          end.setHours(18, 0, 0, 0);
+        } else {
+          start.setHours(17, 0, 0, 0);
+          end.setHours(22, 0, 0, 0);
+        }
+
+        const earliestGameStart = new Date(Math.min(...games.map((g) => g.start.getTime())));
+        const latestGameEnd = new Date(Math.max(...games.map((g) => g.end.getTime())));
+
+        const expandedStart = floorToHour(earliestGameStart);
+        const expandedEnd = ceilToHour(latestGameEnd);
+
+        if (expandedStart < start) {
+          start.setTime(expandedStart.getTime());
+        }
+
+        if (expandedEnd > end) {
+          end.setTime(expandedEnd.getTime());
+        }
+
+        return { start, end };
+      }
+
+      function build15MinuteSlots(start, end) {
+        const slots = [];
+        const cursor = new Date(start);
+
+        while (cursor < end) {
+          slots.push(new Date(cursor));
+          cursor.setMinutes(cursor.getMinutes() + 15);
+        }
+
+        return slots;
+      }
+
+      function floorToHour(date) {
+        const d = new Date(date);
+        d.setMinutes(0, 0, 0);
+        return d;
+      }
+
+      function ceilToHour(date) {
+        const d = new Date(date);
+        if (d.getMinutes() !== 0 || d.getSeconds() !== 0 || d.getMilliseconds() !== 0) {
+          d.setHours(d.getHours() + 1);
+        }
+        d.setMinutes(0, 0, 0);
+        return d;
+      }
+
+      function toDateTime(dateStr, timeStr) {
+        return new Date(`${dateStr} ${timeStr}`);
+      }
+
+      function formatTime(date) {
+        if (date.getMinutes() !== 0) {
+          return "";
+        }
+        return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      }
     </script>
+
     <style>
       .pageTitle {
         text-align: center;
       }
-      .pageControls{
-        text-align: center;
-      }
-      
-      #messageDiv{
+
+      .pageControls {
         text-align: center;
       }
 
-      .groupedByDate   {
+      #messageDiv {
+        text-align: center;
+      }
+
+      .groupedByDate {
         background-color: #9d9e9f;
         font-size: larger;
         font-weight: bold;
         margin-top: 10px;
         padding: 5px;
       }
-      .gamesNotScheduled   {background-color: #ffcc00;}
-      /* tr {padding-left: 15px;padding-right: 15px;} */
+
+      .gamesNotScheduled {
+        background-color: #ffcc00;
+        margin-bottom: 4px;
+        padding: 5px;
+      }
+
+      .emptyDate {
+        background-color: #f4f4f4;
+        border: 1px solid #bbb;
+        padding: 8px;
+      }
+
       table {
         border-collapse: collapse;
         text-align: center;
+        margin-bottom: 10px;
+        table-layout: auto;
+        width: auto;
       }
-      th, td {
+
+      th,
+      td {
         border: 1px solid black;
-        padding-left: 15px;padding-right: 15px;
-      }
-      th {font-size: large;}
-
-      .sameTimeSameField{
-        background-color: red;
-        padding-left: 10px;
-      }
-
-      .HOLDER{
-        border: 6px solid yellow !important;
+        padding-top: 2px;
+        padding-bottom: 2px;
+        padding-left: 6px;
+        padding-right: 6px;
+        line-height: 1.1;
+        white-space: nowrap;
       }
 
-      .CHANGE_REQUEST{
-        border: 6px solid red !important;
+      th {
+        font-size: large;
       }
 
-      .VEO1{
+      .fieldSize {
+        display: block;
+        font-size: 0.7em;
+        font-weight: normal;
+        margin-top: 2px;
+      }
+
+      .timeCol {
+        font-weight: bold;
+        vertical-align: middle;
+        padding-left: 8px;
+        padding-right: 8px;
+      }
+
+      .slotRow {
+        height: 16px;
+      }
+
+      .hourRow {
+        height: 16px;
+      }
+
+      .hourRow td {
+        border-top-width: 3px;
+      }
+
+      .quarterRow {
+        height: 10px;
+      }
+
+      .quarterRow td {
+        padding-top: 0;
+        padding-bottom: 0;
+        line-height: 1;
+      }
+
+      .gameCell {
+        background: #dceffd;
+        vertical-align: center;
+        font-weight: bold;
+        font-size: 0.85rem;
+        white-space: normal;
+      }
+
+      .VEO1 {
         background-color: rgb(0, 217, 255);
       }
-      .VEO2{
+
+      .VEO2 {
         background-color: rgb(81, 121, 197);
       }
-      .VEO3{
+
+      .VEO3 {
         background-color: rgb(116, 190, 160);
       }
-      .VEO4{
+
+      .VEO4 {
         background-color: rgb(204, 152, 216);
       }
-      .VEO5{
+
+      .VEO5 {
         background-color: rgb(136, 230, 206);
       }
-      .VEO6{
+
+      .VEO6 {
         background-color: rgb(207, 206, 107);
       }
-      .VEO7{
+
+      .VEO7 {
         background-color: rgb(217, 171, 171);
       }
-      .VEO8{
+
+      .VEO8 {
         background-color: rgb(244, 217, 208);
       }
-      .VEO9{
+
+      .VEO9 {
         background-color: rgb(208, 184, 168);
       }
 
-      .cameraKey{        
+      .cameraKey {
         padding: 10px;
       }
 
+      .emptyCell {
+        background: #fff;
+      }
+
+      .linkedShadeCell {
+        background: repeating-linear-gradient(135deg, #f6c6c6, #f6c6c6 10px, #ef9b9b 10px, #ef9b9b 20px);
+        color: #6f1d1d;
+        font-size: 0.72rem;
+        font-weight: bold;
+        padding: 2px 4px;
+        vertical-align: middle;
+        text-align: center;
+        white-space: normal;
+      }
+
+      .linkedShadeLabel {
+        line-height: 1.15;
+        text-align: center;
+      }
+
+      .HOLDER {
+        border: 6px solid yellow !important;
+      }
+
+      .CHANGE_REQUEST {
+        border: 6px solid red !important;
+      }
+
+      .overlapContainerCell {
+        padding: 0;
+        position: relative;
+      }
+
+      .sideBySideGames {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ff4444;
+      }
+
+      .gamePanel {
+        position: absolute;
+        box-sizing: border-box;
+        padding: 2px 4px;
+        border-right: 1px solid rgba(0, 0, 0, 0.25);
+        font-size: 0.85rem;
+        font-weight: bold;
+        white-space: normal;
+        background: #dceffd;
+        overflow: hidden;
+      }
+
+      .gamePanel:last-child {
+        border-right: none;
+      }
+
+      .gamePanelTime {
+        font-size: 0.75rem;
+        color: #444;
+        font-weight: normal;
+      }
+
+      .gamePanelTeam {
+        font-weight: bold;
+      }
     </style>
-    
   </head>
 
   <body>
     <form>
       <div class="pageTitle">
-        <h1>
-         Freehold Soccer Home Game Schedule
-        </h1>
+        <h1>Freehold Soccer Home Game Schedule (Rules View)</h1>
       </div>
       <div class="pageControls">
         <input id="btnFetchFromSheet" type="button" value="Refresh" onclick="fetchDataOnLoad();" />
         <input id="btnFetchFromMock" type="button" value="Load From Test File" onclick="populateTableFromMockData();" />
-        <input type="checkbox" id="ckbShowPastGames" onchange="showOldGamesCkbChange(event)"/>
-        <label for="ckbMessage">Show games in the past</label>
+        <input type="checkbox" id="ckbShowPastGames" onchange="showOldGamesCkbChange()" />
+        <label for="ckbShowPastGames">Show games in the past</label>
       </div>
       <br />
       <div id="messageDiv">
-        Hover over the game  to see game details <br /> <br />
-        For details on Camera assigment and questions see the Camera Page
-        <!-- <div id="btnSaveCamera" onClick="saveCameraSettings()">Save Camera Settings</div>  -->
+        Hover over a game to see details.
         <div>
           <br />
           <span class="VEO1 cameraKey">VEO1</span><span class="VEO2 cameraKey">VEO2</span><span class="VEO3 cameraKey">VEO3</span><span class="VEO4 cameraKey">VEO4</span><span class="VEO5 cameraKey">VEO5</span><span class="VEO6 cameraKey">VEO6</span><span class="VEO7 cameraKey">VEO7</span><span class="VEO8 cameraKey">VEO8</span><span class="VEO9 cameraKey">VEO9</span>
           <br /> <br /> If your team hasn't registered yet for cameras please do -> <a href="https://sites.google.com/view/fsl-coaches-corner/camera">Camera Page</a>
         </div>
       </div>
-
-      <br />
       <br />
       <div id="testTbl"></div>
       <br />
     </form>
   </body>
-<!-- HOME FIELDS -->
 </html>
-
+<!-- HOME FIELDS -->
